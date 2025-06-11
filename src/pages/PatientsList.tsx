@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Search, Edit, Trash2, Plus, Ruler } from "lucide-react";
+import { Search, Edit, Trash2, Plus, Ruler, TrendingUp } from "lucide-react";
 import Layout from "@/components/Layout";
 
 interface Patient {
@@ -78,6 +78,10 @@ const PatientsList = () => {
     navigate(`/cadastro-medidas?paciente_id=${patientId}`);
   };
 
+  const handleEvolution = (patientId: number) => {
+    navigate(`/evolucao-paciente?paciente_id=${patientId}`);
+  };
+
   return (
     <Layout title="Lista de Pacientes">
       <div className="space-y-6">
@@ -141,6 +145,15 @@ const PatientsList = () => {
                         <TableCell>{formatDate(patient.dataCadastro)}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEvolution(patient.id)}
+                              className="h-8 w-8 p-0"
+                              title="Ver Evolução"
+                            >
+                              <TrendingUp className="w-4 h-4" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
