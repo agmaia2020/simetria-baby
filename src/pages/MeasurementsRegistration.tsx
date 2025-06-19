@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Layout from "@/components/Layout";
+import { supabase } from "@/integrations/supabase/client";
+import { useMeasurements } from "@/hooks/useMeasurements";
 
 interface MeasurementResults {
   ci: number | null;
@@ -17,16 +19,21 @@ interface MeasurementResults {
   tbcClassification: string;
 }
 
+interface PatientInfo {
+  id_paciente: number;
+  nome: string;
+  data_nascimento: string;
+  sexo: string;
+}
+
 const MeasurementsRegistration = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const pacienteId = searchParams.get("paciente_id");
+  const { createMeasurement, loading: savingMeasurement } = useMeasurements();
 
-  const [patientInfo, setPatientInfo] = useState({
-    nome: "João Silva",
-    dataNascimento: "01/01/1990",
-    sexo: "Masculino"
-  });
+  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
+  const [loadingPatient, setLoadingPatient] = useState(true);
 
   const [measurements, setMeasurements] = useState({
     dataCadastro: new Date().toISOString().split('T')[0],
@@ -48,16 +55,53 @@ const MeasurementsRegistration = () => {
     tbcClassification: ""
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-
   useEffect(() => {
     if (!pacienteId) {
       toast.error("ID do paciente não encontrado");
       navigate("/lista-pacientes");
       return;
     }
-    // Aqui você carregaria os dados do paciente do Supabase
+    loadPatientData();
   }, [pacienteId, navigate]);
+
+  const loadPatientData = async () => {
+    if (!pacienteId) return;
+
+    try {
+      setLoadingPatient(true);
+      console.log("Carregando dados do paciente:", pacienteId);
+      
+      const { data, error } = await supabase
+        .from('dpacientes')
+        .select('id_paciente, nome, data_nascimento, sexo')
+        .eq('id_paciente', parseInt(pacienteId))
+        .eq('ativo', true)
+        .single();
+
+      if (error) {
+        console.error("Erro ao carregar paciente:", error);
+        toast.error("Erro ao carregar dados do paciente");
+        navigate("/lista-pacientes");
+        return;
+      }
+
+      if (data) {
+        setPatientInfo({
+          id_paciente: data.id_paciente,
+          nome: data.nome,
+          data_nascimento: new Date(data.data_nascimento).toLocaleDateString('pt-BR'),
+          sexo: data.sexo === 'masculino' ? 'Masculino' : 'Feminino'
+        });
+        console.log("Dados do paciente carregados:", data);
+      }
+    } catch (error) {
+      console.error("Erro inesperado:", error);
+      toast.error("Erro inesperado ao carregar paciente");
+      navigate("/lista-pacientes");
+    } finally {
+      setLoadingPatient(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setMeasurements(prev => ({
@@ -134,24 +178,39 @@ const MeasurementsRegistration = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!patientInfo) {
+      toast.error("Dados do paciente não encontrados");
+      return;
+    }
+
     const today = new Date().toISOString().split('T')[0];
     if (measurements.dataCadastro > today) {
       toast.error("A data de cadastro não pode ser posterior à data atual");
       return;
     }
 
-    setIsLoading(true);
+    const measurementData = {
+      id_paciente: patientInfo.id_paciente,
+      data_medicao: measurements.dataCadastro,
+      pc: measurements.pc ? parseFloat(measurements.pc) : null,
+      ap: measurements.ap ? parseFloat(measurements.ap) : null,
+      bp: measurements.bp ? parseFloat(measurements.bp) : null,
+      pd: measurements.pd ? parseFloat(measurements.pd) : null,
+      pe: measurements.pe ? parseFloat(measurements.pe) : null,
+      td: measurements.td ? parseFloat(measurements.td) : null,
+      te: measurements.te ? parseFloat(measurements.te) : null,
+      ci: results.ci,
+      cvai: results.cvai,
+      tbc: results.tbc
+    };
+
+    console.log("Dados da medida a serem salvos:", measurementData);
+
+    const savedMeasurement = await createMeasurement(measurementData);
     
-    try {
-      // Simular salvamento no Supabase
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+    if (savedMeasurement) {
       toast.success("Medidas cadastradas com sucesso!");
-      
-    } catch (error) {
-      toast.error("Erro ao salvar as medidas");
-    } finally {
-      setIsLoading(false);
+      navigate("/lista-pacientes");
     }
   };
 
@@ -166,6 +225,26 @@ const MeasurementsRegistration = () => {
       default: return "text-gray-600 bg-gray-50 border-gray-200";
     }
   };
+
+  if (loadingPatient) {
+    return (
+      <Layout title="Cadastro de Medidas Cranianas">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-gray-500">Carregando dados do paciente...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!patientInfo) {
+    return (
+      <Layout title="Cadastro de Medidas Cranianas">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-red-500">Paciente não encontrado</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="Cadastro de Medidas Cranianas">
@@ -182,7 +261,7 @@ const MeasurementsRegistration = () => {
                   <strong>Nome:</strong> {patientInfo.nome}
                 </div>
                 <div>
-                  <strong>Data de Nascimento:</strong> {patientInfo.dataNascimento}
+                  <strong>Data de Nascimento:</strong> {patientInfo.data_nascimento}
                 </div>
                 <div>
                   <strong>Sexo:</strong> {patientInfo.sexo}
@@ -301,9 +380,9 @@ const MeasurementsRegistration = () => {
                 <Button 
                   type="submit" 
                   className="flex-1"
-                  disabled={isLoading}
+                  disabled={savingMeasurement}
                 >
-                  {isLoading ? "Salvando..." : "Salvar Medidas"}
+                  {savingMeasurement ? "Salvando..." : "Salvar Medidas"}
                 </Button>
                 <Button 
                   type="button" 
