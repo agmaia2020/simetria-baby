@@ -191,6 +191,7 @@ const MeasurementsRegistration = () => {
       return;
     }
 
+    // Não incluir os campos calculados (ci, cvai, tbc) no insert - eles serão calculados pelo banco
     const measurementData = {
       id_paciente: patientInfo.id_paciente,
       data_medicao: measurements.dataCadastro,
@@ -200,10 +201,7 @@ const MeasurementsRegistration = () => {
       pd: measurements.pd ? parseFloat(measurements.pd) : null,
       pe: measurements.pe ? parseFloat(measurements.pe) : null,
       td: measurements.td ? parseFloat(measurements.td) : null,
-      te: measurements.te ? parseFloat(measurements.te) : null,
-      ci: results.ci,
-      cvai: results.cvai,
-      tbc: results.tbc
+      te: measurements.te ? parseFloat(measurements.te) : null
     };
 
     console.log("Dados da medida a serem salvos:", measurementData);
