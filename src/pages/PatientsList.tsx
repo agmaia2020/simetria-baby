@@ -101,6 +101,7 @@ const PatientsList = () => {
   };
 
   const handleMeasurements = (patientId: number) => {
+    console.log("Navegando para medidas com paciente ID:", patientId);
     navigate(`/cadastro-medidas?paciente_id=${patientId}`);
   };
 
@@ -119,7 +120,7 @@ const PatientsList = () => {
   }
 
   return (
-    <Layout title="Lista de Pacientes">
+    <Layout title="Lista de Pacientes" showBackButton={false}>
       <div className="space-y-6">
         {/* Controles superiores */}
         <Card>

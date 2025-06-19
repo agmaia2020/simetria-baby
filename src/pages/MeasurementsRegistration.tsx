@@ -56,7 +56,9 @@ const MeasurementsRegistration = () => {
   });
 
   useEffect(() => {
+    console.log("URL params:", { pacienteId });
     if (!pacienteId) {
+      console.error("ID do paciente não encontrado na URL");
       toast.error("ID do paciente não encontrado");
       navigate("/lista-pacientes");
       return;
@@ -228,7 +230,7 @@ const MeasurementsRegistration = () => {
 
   if (loadingPatient) {
     return (
-      <Layout title="Cadastro de Medidas Cranianas">
+      <Layout title="Cadastro de Medidas Cranianas" backPath="/lista-pacientes">
         <div className="flex justify-center items-center h-64">
           <div className="text-gray-500">Carregando dados do paciente...</div>
         </div>
@@ -238,7 +240,7 @@ const MeasurementsRegistration = () => {
 
   if (!patientInfo) {
     return (
-      <Layout title="Cadastro de Medidas Cranianas">
+      <Layout title="Cadastro de Medidas Cranianas" backPath="/lista-pacientes">
         <div className="flex justify-center items-center h-64">
           <div className="text-red-500">Paciente não encontrado</div>
         </div>
@@ -247,7 +249,7 @@ const MeasurementsRegistration = () => {
   }
 
   return (
-    <Layout title="Cadastro de Medidas Cranianas">
+    <Layout title="Cadastro de Medidas Cranianas" backPath="/lista-pacientes">
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Informações do Paciente */}
         <div className="lg:col-span-2">
