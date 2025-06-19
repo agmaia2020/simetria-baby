@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,24 +23,34 @@ interface Patient {
 
 const PatientsList = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Verificar se foi chamada com um ID específico de paciente
+  const specificPatientId = searchParams.get('paciente_id');
+
   useEffect(() => {
     loadPatients();
-  }, []);
+  }, [specificPatientId]);
 
   const loadPatients = async () => {
     try {
       console.log("Carregando pacientes...");
       setLoading(true);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('dpacientes')
         .select('*')
-        .eq('ativo', true)
-        .order('data_cadastro', { ascending: false });
+        .eq('ativo', true);
+
+      // Se foi especificado um ID de paciente, filtrar apenas esse paciente
+      if (specificPatientId) {
+        query = query.eq('id_paciente', parseInt(specificPatientId));
+      }
+
+      const { data, error } = await query.order('data_cadastro', { ascending: false });
 
       if (error) {
         console.error("Erro ao carregar pacientes:", error);
@@ -120,13 +130,15 @@ const PatientsList = () => {
   }
 
   return (
-    <Layout title="Lista de Pacientes" showBackButton={false}>
+    <Layout title="Lista de Pacientes" showBackButton={!specificPatientId}>
       <div className="space-y-6">
         {/* Controles superiores */}
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <CardTitle>Pacientes Cadastrados</CardTitle>
+              <CardTitle>
+                {specificPatientId ? "Paciente Selecionado" : "Pacientes Cadastrados"}
+              </CardTitle>
               <Button onClick={() => navigate("/cadastro-paciente")} className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
                 Novo Paciente
@@ -229,31 +241,33 @@ const PatientsList = () => {
           </CardContent>
         </Card>
 
-        {/* Estatísticas */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-blue-600">{patients.length}</div>
-              <div className="text-sm text-gray-600">Total de Pacientes</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-green-600">
-                {patients.filter(p => p.sexo === "masculino").length}
-              </div>
-              <div className="text-sm text-gray-600">Pacientes Masculinos</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-pink-600">
-                {patients.filter(p => p.sexo === "feminino").length}
-              </div>
-              <div className="text-sm text-gray-600">Pacientes Femininos</div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Estatísticas - só mostrar quando não é um paciente específico */}
+        {!specificPatientId && (
+          <div className="grid md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-2xl font-bold text-blue-600">{patients.length}</div>
+                <div className="text-sm text-gray-600">Total de Pacientes</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-2xl font-bold text-green-600">
+                  {patients.filter(p => p.sexo === "masculino").length}
+                </div>
+                <div className="text-sm text-gray-600">Pacientes Masculinos</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-2xl font-bold text-pink-600">
+                  {patients.filter(p => p.sexo === "feminino").length}
+                </div>
+                <div className="text-sm text-gray-600">Pacientes Femininos</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </Layout>
   );
