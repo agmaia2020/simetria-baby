@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,47 +9,54 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Search, Edit, Trash2, Plus, Ruler, TrendingUp } from "lucide-react";
 import Layout from "@/components/Layout";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Patient {
-  id: number;
+  id_paciente: number;
   nome: string;
-  dataNascimento: string;
+  data_nascimento: string;
   sexo: string;
   raca: string;
-  dataCadastro: string;
+  data_cadastro: string;
+  ativo?: boolean;
 }
 
 const PatientsList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // Dados simulados
-  const [patients] = useState<Patient[]>([
-    {
-      id: 1,
-      nome: "João Silva Santos",
-      dataNascimento: "1990-01-15",
-      sexo: "masculino",
-      raca: "branca",
-      dataCadastro: "2024-01-15"
-    },
-    {
-      id: 2,
-      nome: "Maria Oliveira",
-      dataNascimento: "1985-03-22",
-      sexo: "feminino",
-      raca: "parda",
-      dataCadastro: "2024-01-14"
-    },
-    {
-      id: 3,
-      nome: "Carlos Alberto",
-      dataNascimento: "1992-07-08",
-      sexo: "masculino",
-      raca: "preta",
-      dataCadastro: "2024-01-13"
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPatients();
+  }, []);
+
+  const loadPatients = async () => {
+    try {
+      console.log("Carregando pacientes...");
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('dpacientes')
+        .select('*')
+        .eq('ativo', true)
+        .order('data_cadastro', { ascending: false });
+
+      if (error) {
+        console.error("Erro ao carregar pacientes:", error);
+        toast.error("Erro ao carregar pacientes");
+        return;
+      }
+
+      console.log("Pacientes carregados:", data);
+      setPatients(data || []);
+    } catch (error) {
+      console.error("Erro inesperado:", error);
+      toast.error("Erro inesperado ao carregar pacientes");
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const filteredPatients = patients.filter(patient =>
     patient.nome.toLowerCase().includes(searchTerm.toLowerCase())
@@ -67,10 +74,29 @@ const PatientsList = () => {
     navigate(`/cadastro-paciente?edit_id=${patientId}`);
   };
 
-  const handleDelete = (patientId: number, patientName: string) => {
+  const handleDelete = async (patientId: number, patientName: string) => {
     if (window.confirm(`Tem certeza que deseja excluir o paciente ${patientName}?`)) {
-      toast.success("Paciente excluído com sucesso!");
-      // Aqui você faria a exclusão no Supabase
+      try {
+        const { error } = await supabase
+          .from('dpacientes')
+          .update({ 
+            ativo: false, 
+            data_exclusao: new Date().toISOString() 
+          })
+          .eq('id_paciente', patientId);
+
+        if (error) {
+          console.error("Erro ao excluir paciente:", error);
+          toast.error("Erro ao excluir paciente");
+          return;
+        }
+
+        toast.success("Paciente excluído com sucesso!");
+        loadPatients();
+      } catch (error) {
+        console.error("Erro inesperado:", error);
+        toast.error("Erro inesperado ao excluir paciente");
+      }
     }
   };
 
@@ -81,6 +107,16 @@ const PatientsList = () => {
   const handleEvolution = (patientId: number) => {
     navigate(`/evolucao-paciente?paciente_id=${patientId}`);
   };
+
+  if (loading) {
+    return (
+      <Layout title="Lista de Pacientes">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-gray-500">Carregando pacientes...</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="Lista de Pacientes">
@@ -133,22 +169,22 @@ const PatientsList = () => {
                     </TableRow>
                   ) : (
                     filteredPatients.map((patient) => (
-                      <TableRow key={patient.id} className="hover:bg-gray-50">
+                      <TableRow key={patient.id_paciente} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{patient.nome}</TableCell>
-                        <TableCell>{formatDate(patient.dataNascimento)}</TableCell>
+                        <TableCell>{formatDate(patient.data_nascimento)}</TableCell>
                         <TableCell>
                           <Badge className={getSexBadgeColor(patient.sexo)}>
                             {patient.sexo === "masculino" ? "M" : "F"}
                           </Badge>
                         </TableCell>
                         <TableCell className="capitalize">{patient.raca}</TableCell>
-                        <TableCell>{formatDate(patient.dataCadastro)}</TableCell>
+                        <TableCell>{formatDate(patient.data_cadastro)}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-2">
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleEvolution(patient.id)}
+                              onClick={() => handleEvolution(patient.id_paciente)}
                               className="h-8 w-8 p-0"
                               title="Ver Evolução"
                             >
@@ -157,7 +193,7 @@ const PatientsList = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleMeasurements(patient.id)}
+                              onClick={() => handleMeasurements(patient.id_paciente)}
                               className="h-8 w-8 p-0"
                               title="Cadastrar Medidas"
                             >
@@ -166,7 +202,7 @@ const PatientsList = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleEdit(patient.id)}
+                              onClick={() => handleEdit(patient.id_paciente)}
                               className="h-8 w-8 p-0"
                               title="Editar"
                             >
@@ -175,7 +211,7 @@ const PatientsList = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleDelete(patient.id, patient.nome)}
+                              onClick={() => handleDelete(patient.id_paciente, patient.nome)}
                               className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
                               title="Excluir"
                             >

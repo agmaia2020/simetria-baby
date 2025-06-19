@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,16 +8,59 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import Layout from "@/components/Layout";
+import { supabase } from "@/integrations/supabase/client";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("edit_id");
+  const isEditing = !!editId;
+
   const [formData, setFormData] = useState({
     nome: "",
-    dataNascimento: "",
+    data_nascimento: "",
     sexo: "",
     raca: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isEditing && editId) {
+      loadPatientData(parseInt(editId));
+    }
+  }, [isEditing, editId]);
+
+  const loadPatientData = async (patientId: number) => {
+    try {
+      console.log("Carregando dados do paciente:", patientId);
+      
+      const { data, error } = await supabase
+        .from('dpacientes')
+        .select('*')
+        .eq('id_paciente', patientId)
+        .single();
+
+      if (error) {
+        console.error("Erro ao carregar paciente:", error);
+        toast.error("Erro ao carregar dados do paciente");
+        navigate("/lista-pacientes");
+        return;
+      }
+
+      if (data) {
+        setFormData({
+          nome: data.nome || "",
+          data_nascimento: data.data_nascimento || "",
+          sexo: data.sexo || "",
+          raca: data.raca || ""
+        });
+      }
+    } catch (error) {
+      console.error("Erro inesperado:", error);
+      toast.error("Erro inesperado ao carregar paciente");
+      navigate("/lista-pacientes");
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -34,7 +77,7 @@ const PatientRegistration = () => {
       toast.error("Nome é obrigatório");
       return;
     }
-    if (!formData.dataNascimento) {
+    if (!formData.data_nascimento) {
       toast.error("Data de nascimento é obrigatória");
       return;
     }
@@ -50,18 +93,60 @@ const PatientRegistration = () => {
     setIsLoading(true);
     
     try {
-      // Simular cadastro (aqui você integraria com Supabase)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success("Paciente cadastrado com sucesso!");
-      
-      // Redirecionar para cadastro de medidas
-      setTimeout(() => {
-        navigate("/cadastro-medidas?paciente_id=1");
-      }, 1000);
+      if (isEditing && editId) {
+        // Atualizar paciente existente
+        const { error } = await supabase
+          .from('dpacientes')
+          .update({
+            nome: formData.nome.trim(),
+            data_nascimento: formData.data_nascimento,
+            sexo: formData.sexo,
+            raca: formData.raca
+          })
+          .eq('id_paciente', parseInt(editId));
+
+        if (error) {
+          console.error("Erro ao atualizar paciente:", error);
+          toast.error("Erro ao atualizar paciente");
+          return;
+        }
+
+        toast.success("Paciente atualizado com sucesso!");
+        navigate("/lista-pacientes");
+      } else {
+        // Criar novo paciente
+        const { data, error } = await supabase
+          .from('dpacientes')
+          .insert({
+            nome: formData.nome.trim(),
+            data_nascimento: formData.data_nascimento,
+            sexo: formData.sexo,
+            raca: formData.raca,
+            ativo: true
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Erro ao cadastrar paciente:", error);
+          toast.error("Erro ao cadastrar paciente");
+          return;
+        }
+
+        console.log("Paciente cadastrado:", data);
+        toast.success("Paciente cadastrado com sucesso!");
+        
+        // Redirecionar para cadastro de medidas com o ID do novo paciente
+        if (data && data.id_paciente) {
+          navigate(`/cadastro-medidas?paciente_id=${data.id_paciente}`);
+        } else {
+          navigate("/lista-pacientes");
+        }
+      }
       
     } catch (error) {
-      toast.error("Erro ao cadastrar paciente");
+      console.error("Erro inesperado:", error);
+      toast.error("Erro inesperado ao salvar paciente");
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +155,7 @@ const PatientRegistration = () => {
   const resetForm = () => {
     setFormData({
       nome: "",
-      dataNascimento: "",
+      data_nascimento: "",
       sexo: "",
       raca: ""
     });
@@ -78,11 +163,13 @@ const PatientRegistration = () => {
   };
 
   return (
-    <Layout title="Cadastro de Paciente">
+    <Layout title={isEditing ? "Editar Paciente" : "Cadastro de Paciente"}>
       <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Dados do Paciente</CardTitle>
+            <CardTitle className="text-center">
+              {isEditing ? "Editar Dados do Paciente" : "Dados do Paciente"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -100,12 +187,12 @@ const PatientRegistration = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dataNascimento">Data de Nascimento *</Label>
+                  <Label htmlFor="data_nascimento">Data de Nascimento *</Label>
                   <Input
-                    id="dataNascimento"
+                    id="data_nascimento"
                     type="date"
-                    value={formData.dataNascimento}
-                    onChange={(e) => handleInputChange("dataNascimento", e.target.value)}
+                    value={formData.data_nascimento}
+                    onChange={(e) => handleInputChange("data_nascimento", e.target.value)}
                     required
                   />
                 </div>
@@ -156,15 +243,25 @@ const PatientRegistration = () => {
                   className="flex-1"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Cadastrando..." : "Cadastrar Paciente"}
+                  {isLoading ? "Salvando..." : isEditing ? "Atualizar Paciente" : "Cadastrar Paciente"}
                 </Button>
+                {!isEditing && (
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={resetForm}
+                    className="flex-1"
+                  >
+                    Limpar Formulário
+                  </Button>
+                )}
                 <Button 
                   type="button" 
                   variant="outline"
-                  onClick={resetForm}
+                  onClick={() => navigate("/lista-pacientes")}
                   className="flex-1"
                 >
-                  Limpar Formulário
+                  {isEditing ? "Cancelar" : "Lista de Pacientes"}
                 </Button>
               </div>
             </form>
