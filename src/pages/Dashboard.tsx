@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -264,7 +263,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Gráfico de distribuição por idade - barras horizontais verdes ordenadas */}
+          {/* Gráfico de distribuição por idade - barras horizontais azuis ordenadas */}
           <Card>
             <CardHeader>
               <CardTitle>Distribuição por Faixa Etária</CardTitle>
@@ -272,17 +271,17 @@ const Dashboard = () => {
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ageGroups} layout="horizontal">
+                  <BarChart data={ageGroups} layout="horizontal" margin={{ left: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" fontSize={12} />
                     <YAxis 
                       type="category" 
                       dataKey="grupo" 
                       fontSize={12}
-                      width={80}
+                      width={60}
                     />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="count" fill="#10B981" />
+                    <Bar dataKey="count" fill="#3B82F6" />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
