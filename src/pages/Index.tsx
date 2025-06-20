@@ -54,10 +54,10 @@ const Index = () => {
             return (
               <Card
                 key={index}
-                className="hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+                className="hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer h-full flex flex-col"
                 onClick={() => navigate(item.path)}
               >
-                <CardHeader className="text-center">
+                <CardHeader className="text-center flex-grow">
                   <div className={`w-16 h-16 rounded-full ${item.color} flex items-center justify-center mx-auto mb-4`}>
                     <Icon className="w-8 h-8 text-white" />
                   </div>
@@ -66,7 +66,7 @@ const Index = () => {
                     {item.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="mt-auto">
                   <Button
                     className="w-full"
                     onClick={(e) => {

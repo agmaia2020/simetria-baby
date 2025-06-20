@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { Users, UserCheck, Calendar, TrendingUp } from "lucide-react";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,7 +117,7 @@ const Dashboard = () => {
 
       setRaceData(raceChartData);
 
-      // Grupos por idade
+      // Grupos por idade - ordenado de forma decrescente
       const ageGroupStats = ages.reduce((acc: Record<string, number>, age) => {
         let group = '';
         if (age < 1) group = '0-1 anos';
@@ -129,10 +129,12 @@ const Dashboard = () => {
         return acc;
       }, {});
 
-      const ageGroupChartData = Object.entries(ageGroupStats).map(([grupo, count]) => ({
-        grupo,
-        count
-      }));
+      const ageGroupChartData = Object.entries(ageGroupStats)
+        .map(([grupo, count]) => ({
+          grupo,
+          count
+        }))
+        .sort((a, b) => b.count - a.count); // Ordenação decrescente
 
       setAgeGroups(ageGroupChartData);
 
@@ -150,8 +152,6 @@ const Dashboard = () => {
       color: "hsl(var(--chart-1))",
     },
   };
-
-  const pieColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
 
   if (loading) {
     return (
@@ -238,7 +238,7 @@ const Dashboard = () => {
 
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico de distribuição por raça/cor */}
+          {/* Gráfico de distribuição por raça/cor - cor azul */}
           <Card>
             <CardHeader>
               <CardTitle>Distribuição por Raça/Cor</CardTitle>
@@ -257,14 +257,14 @@ const Dashboard = () => {
                     />
                     <YAxis fontSize={12} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="count" fill="var(--color-count)" />
+                    <Bar dataKey="count" fill="#3B82F6" />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
 
-          {/* Gráfico de distribuição por idade */}
+          {/* Gráfico de distribuição por idade - barras horizontais verdes ordenadas */}
           <Card>
             <CardHeader>
               <CardTitle>Distribuição por Faixa Etária</CardTitle>
@@ -272,22 +272,18 @@ const Dashboard = () => {
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={ageGroups}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="count"
-                      label={({ grupo, count }) => `${grupo}: ${count}`}
-                    >
-                      {ageGroups.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
-                      ))}
-                    </Pie>
+                  <BarChart data={ageGroups} layout="horizontal">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" fontSize={12} />
+                    <YAxis 
+                      type="category" 
+                      dataKey="grupo" 
+                      fontSize={12}
+                      width={80}
+                    />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                  </PieChart>
+                    <Bar dataKey="count" fill="#10B981" />
+                  </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
