@@ -14,6 +14,8 @@ interface AgeGroupChartProps {
 }
 
 export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
+  console.log("AgeGroupChart data:", data);
+  
   return (
     <Card>
       <CardHeader>
@@ -22,9 +24,13 @@ export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="horizontal" margin={{ left: 60 }}>
+            <BarChart data={data} layout="horizontal" margin={{ left: 60, right: 20, top: 20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" fontSize={12} />
+              <XAxis 
+                type="number" 
+                fontSize={12}
+                domain={[0, 'dataMax + 1']}
+              />
               <YAxis 
                 type="category" 
                 dataKey="grupo" 
@@ -32,7 +38,11 @@ export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
                 width={60}
               />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="count" fill="#3B82F6" />
+              <Bar 
+                dataKey="count" 
+                fill="#3B82F6"
+                radius={[0, 4, 4, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>

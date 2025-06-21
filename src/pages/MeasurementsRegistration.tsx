@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,9 @@ const MeasurementsRegistration = () => {
   const { createMeasurement, loading: savingMeasurement } = useMeasurements();
 
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
-  const [loadingPatient, setLoadingPatient] = useState(true);
+  const [loadingPatient, setLoadingPatient] = useState(!!pacienteId);
+  const [showPatientSelection, setShowPatientSelection] = useState(!pacienteId);
+  const [availablePatients, setAvailablePatients] = useState<PatientInfo[]>([]);
 
   const [measurements, setMeasurements] = useState({
     dataCadastro: new Date().toISOString().split('T')[0],
@@ -56,15 +57,47 @@ const MeasurementsRegistration = () => {
   });
 
   useEffect(() => {
-    console.log("URL params:", { pacienteId });
-    if (!pacienteId) {
-      console.error("ID do paciente não encontrado na URL");
-      toast.error("ID do paciente não encontrado");
-      navigate("/lista-pacientes");
-      return;
+    if (pacienteId) {
+      console.log("URL params:", { pacienteId });
+      loadPatientData();
+    } else {
+      console.log("Nenhum paciente_id fornecido, carregando lista de pacientes");
+      loadAvailablePatients();
     }
-    loadPatientData();
   }, [pacienteId, navigate]);
+
+  const loadAvailablePatients = async () => {
+    try {
+      setLoadingPatient(true);
+      console.log("Carregando lista de pacientes disponíveis");
+      
+      const { data, error } = await supabase
+        .from('dpacientes')
+        .select('id_paciente, nome, data_nascimento, sexo')
+        .eq('ativo', true)
+        .order('nome');
+
+      if (error) {
+        console.error("Erro ao carregar pacientes:", error);
+        toast.error("Erro ao carregar lista de pacientes");
+        return;
+      }
+
+      const patientsWithFormattedDate = data?.map(patient => ({
+        ...patient,
+        data_nascimento: new Date(patient.data_nascimento).toLocaleDateString('pt-BR'),
+        sexo: patient.sexo === 'masculino' ? 'Masculino' : 'Feminino'
+      })) || [];
+
+      setAvailablePatients(patientsWithFormattedDate);
+      console.log("Pacientes carregados:", patientsWithFormattedDate.length);
+    } catch (error) {
+      console.error("Erro inesperado:", error);
+      toast.error("Erro inesperado ao carregar pacientes");
+    } finally {
+      setLoadingPatient(false);
+    }
+  };
 
   const loadPatientData = async () => {
     if (!pacienteId) return;
@@ -82,8 +115,9 @@ const MeasurementsRegistration = () => {
 
       if (error) {
         console.error("Erro ao carregar paciente:", error);
-        toast.error("Erro ao carregar dados do paciente");
-        navigate("/lista-pacientes");
+        toast.error("Paciente não encontrado");
+        setShowPatientSelection(true);
+        loadAvailablePatients();
         return;
       }
 
@@ -94,15 +128,23 @@ const MeasurementsRegistration = () => {
           data_nascimento: new Date(data.data_nascimento).toLocaleDateString('pt-BR'),
           sexo: data.sexo === 'masculino' ? 'Masculino' : 'Feminino'
         });
+        setShowPatientSelection(false);
         console.log("Dados do paciente carregados:", data);
       }
     } catch (error) {
       console.error("Erro inesperado:", error);
       toast.error("Erro inesperado ao carregar paciente");
-      navigate("/lista-pacientes");
+      setShowPatientSelection(true);
+      loadAvailablePatients();
     } finally {
       setLoadingPatient(false);
     }
+  };
+
+  const selectPatient = (patient: PatientInfo) => {
+    setPatientInfo(patient);
+    setShowPatientSelection(false);
+    console.log("Paciente selecionado:", patient);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -181,7 +223,7 @@ const MeasurementsRegistration = () => {
     e.preventDefault();
     
     if (!patientInfo) {
-      toast.error("Dados do paciente não encontrados");
+      toast.error("Selecione um paciente antes de salvar as medidas");
       return;
     }
 
@@ -191,7 +233,6 @@ const MeasurementsRegistration = () => {
       return;
     }
 
-    // Não incluir os campos calculados (ci, cvai, tbc) no insert - eles serão calculados pelo banco
     const measurementData = {
       id_paciente: patientInfo.id_paciente,
       data_medicao: measurements.dataCadastro,
@@ -230,7 +271,57 @@ const MeasurementsRegistration = () => {
     return (
       <Layout title="Cadastro de Medidas Cranianas" backPath="/lista-pacientes">
         <div className="flex justify-center items-center h-64">
-          <div className="text-gray-500">Carregando dados do paciente...</div>
+          <div className="text-gray-500">Carregando...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (showPatientSelection) {
+    return (
+      <Layout title="Cadastro de Medidas Cranianas" backPath="/">
+        <div className="max-w-4xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Selecione um Paciente</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {availablePatients.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 mb-4">Nenhum paciente encontrado</p>
+                    <Button onClick={() => navigate("/cadastro-paciente")}>
+                      Cadastrar Primeiro Paciente
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {availablePatients.map((patient) => (
+                      <Card 
+                        key={patient.id_paciente} 
+                        className="cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => selectPatient(patient)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="grid md:grid-cols-3 gap-4">
+                            <div>
+                              <strong>Nome:</strong> {patient.nome}
+                            </div>
+                            <div>
+                              <strong>Data de Nascimento:</strong> {patient.data_nascimento}
+                            </div>
+                            <div>
+                              <strong>Sexo:</strong> {patient.sexo}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );
@@ -238,9 +329,9 @@ const MeasurementsRegistration = () => {
 
   if (!patientInfo) {
     return (
-      <Layout title="Cadastro de Medidas Cranianas" backPath="/lista-pacientes">
+      <Layout title="Cadastro de Medidas Cranianas" backPath="/">
         <div className="flex justify-center items-center h-64">
-          <div className="text-red-500">Paciente não encontrado</div>
+          <div className="text-red-500">Erro ao carregar dados do paciente</div>
         </div>
       </Layout>
     );
@@ -253,7 +344,16 @@ const MeasurementsRegistration = () => {
         <div className="lg:col-span-2">
           <Card className="bg-blue-50 border-blue-200">
             <CardHeader>
-              <CardTitle className="text-blue-800">Informações do Paciente</CardTitle>
+              <CardTitle className="text-blue-800 flex justify-between items-center">
+                Informações do Paciente
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowPatientSelection(true)}
+                >
+                  Alterar Paciente
+                </Button>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-3 gap-4 text-sm">
