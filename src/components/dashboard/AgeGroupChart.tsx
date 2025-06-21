@@ -40,7 +40,7 @@ export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
               <ChartTooltip content={<ChartTooltipContent />} />
               <Bar 
                 dataKey="count" 
-                fill="#3B82F6"
+                fill="#2563eb"
                 radius={[0, 4, 4, 0]}
               />
             </BarChart>
