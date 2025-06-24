@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Home } from "lucide-react";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 interface LayoutProps {
   title: string;
@@ -41,15 +42,18 @@ const Layout = ({ title, children, showBackButton = true, backPath }: LayoutProp
               )}
               <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2"
-            >
-              <Home className="w-4 h-4" />
-              Início
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/")}
+                className="flex items-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                Início
+              </Button>
+              <UserMenu />
+            </div>
           </div>
         </div>
       </div>

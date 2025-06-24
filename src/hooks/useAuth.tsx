@@ -1,0 +1,185 @@
+
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, nome: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Configurar listener de mudanças de auth primeiro
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state changed:', event, session);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    // Verificar sessão existente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        toast({
+          title: "Erro no login",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo de volta!",
+        });
+      }
+      
+      return { error };
+    } catch (error: any) {
+      toast({
+        title: "Erro no login",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
+  const signUp = async (email: string, password: string, nome: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            nome: nome,
+          },
+        },
+      });
+      
+      if (error) {
+        toast({
+          title: "Erro no cadastro",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Cadastro realizado!",
+          description: "Verifique seu e-mail para confirmar a conta.",
+        });
+      }
+      
+      return { error };
+    } catch (error: any) {
+      toast({
+        title: "Erro no cadastro",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (!error) {
+        toast({
+          title: "Logout realizado",
+          description: "Você foi desconectado com sucesso.",
+        });
+      }
+    } catch (error) {
+      console.error('Erro no logout:', error);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/auth/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+      
+      if (error) {
+        toast({
+          title: "Erro ao enviar e-mail",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "E-mail enviado!",
+          description: "Verifique sua caixa de entrada para redefinir a senha.",
+        });
+      }
+      
+      return { error };
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar e-mail",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
+  const value = {
+    user,
+    session,
+    loading,
+    signIn,
+    signUp,
+    signOut,
+    resetPassword,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
