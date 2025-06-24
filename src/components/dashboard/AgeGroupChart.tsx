@@ -16,6 +16,9 @@ interface AgeGroupChartProps {
 export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
   console.log("AgeGroupChart data:", data);
   
+  // Ordenar os dados de forma decrescente por count
+  const sortedData = [...data].sort((a, b) => b.count - a.count);
+  
   return (
     <Card>
       <CardHeader>
@@ -25,35 +28,26 @@ export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
         <ChartContainer config={chartConfig} className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart 
-              data={data} 
-              layout="horizontal" 
+              data={sortedData}
+              layout="horizontal"
               margin={{ left: 80, right: 20, top: 20, bottom: 20 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
-                type="number" 
+                type="number"
                 fontSize={12}
-                domain={[0, 'dataMax + 1']}
-                stroke="#64748b"
               />
               <YAxis 
-                type="category" 
-                dataKey="grupo" 
+                type="category"
+                dataKey="grupo"
                 fontSize={12}
                 width={80}
-                stroke="#64748b"
               />
-              <ChartTooltip 
-                content={<ChartTooltipContent />} 
-                cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-              />
+              <ChartTooltip content={<ChartTooltipContent />} />
               <Bar 
-                dataKey="count" 
-                fill="var(--color-count, #3b82f6)"
-                stroke="#1e40af"
-                strokeWidth={1}
+                dataKey="count"
+                fill="#3b82f6"
                 radius={[0, 4, 4, 0]}
-                minPointSize={5}
               />
             </BarChart>
           </ResponsiveContainer>
