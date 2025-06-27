@@ -76,6 +76,21 @@ const PatientsList = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const calculateAge = (birthDateString: string) => {
+    const birthDate = new Date(birthDateString);
+    const currentDate = new Date();
+    
+    let age = currentDate.getFullYear() - birthDate.getFullYear();
+    const monthDiff = currentDate.getMonth() - birthDate.getMonth();
+    
+    // Ajustar idade se ainda não fez aniversário no ano atual
+    if (monthDiff < 0 || (monthDiff === 0 && currentDate.getDate() < birthDate.getDate())) {
+      age = age - 1;
+    }
+    
+    return age;
+  };
+
   const getSexBadgeColor = (sexo: string) => {
     return sexo === "masculino" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800";
   };
@@ -167,6 +182,7 @@ const PatientsList = () => {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Data Nascimento</TableHead>
+                    <TableHead>Idade</TableHead>
                     <TableHead>Sexo</TableHead>
                     <TableHead>Raça/Cor</TableHead>
                     <TableHead>Data Cadastro</TableHead>
@@ -176,7 +192,7 @@ const PatientsList = () => {
                 <TableBody>
                   {filteredPatients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         {searchTerm ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
                       </TableCell>
                     </TableRow>
@@ -185,6 +201,7 @@ const PatientsList = () => {
                       <TableRow key={patient.id_paciente} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{patient.nome}</TableCell>
                         <TableCell>{formatDate(patient.data_nascimento)}</TableCell>
+                        <TableCell>{calculateAge(patient.data_nascimento)} anos</TableCell>
                         <TableCell>
                           <Badge className={getSexBadgeColor(patient.sexo)}>
                             {patient.sexo === "masculino" ? "M" : "F"}
