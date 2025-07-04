@@ -36,6 +36,8 @@ export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
               <XAxis 
                 type="number"
                 fontSize={12}
+                domain={[0, 'dataMax']}
+                hide={true} // <-- Oculta os rótulos do eixo X
               />
               <YAxis 
                 type="category"
@@ -48,6 +50,14 @@ export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
                 dataKey="count"
                 fill="#3b82f6"
                 radius={[0, 4, 4, 0]}
+                >
+                <LabelList
+                  dataKey="count"
+                  position="right" // <-- Posição do rótulo para barras horizontais
+                  fill="#000"
+                  fontSize={12}
+                />
+              </Bar>
               />
             </BarChart>
           </ResponsiveContainer>
