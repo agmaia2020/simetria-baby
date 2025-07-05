@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Search, Edit, Trash2, Plus, Ruler, TrendingUp } from "lucide-react";
+import { Search, Edit, Trash2, Plus, Ruler, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -27,6 +27,8 @@ const PatientsList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const patientsPerPage = 10;
 
   // Verificar se foi chamada com um ID específico de paciente
   const specificPatientId = searchParams.get('paciente_id');
@@ -71,6 +73,16 @@ const PatientsList = () => {
   const filteredPatients = patients.filter(patient =>
     patient.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Cálculos da paginação
+  const totalPages = Math.ceil(filteredPatients.length / patientsPerPage);
+  const startIndex = (currentPage - 1) * patientsPerPage;
+  const endIndex = startIndex + patientsPerPage;
+  const currentPatients = filteredPatients.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
@@ -190,14 +202,14 @@ const PatientsList = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPatients.length === 0 ? (
+                  {currentPatients.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         {searchTerm ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredPatients.map((patient) => (
+                    currentPatients.map((patient) => (
                       <TableRow key={patient.id_paciente} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{patient.nome}</TableCell>
                         <TableCell>{formatDate(patient.data_nascimento)}</TableCell>
@@ -257,6 +269,44 @@ const PatientsList = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Paginação */}
+        {filteredPatients.length > patientsPerPage && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Mostrando {startIndex + 1} a {Math.min(endIndex, filteredPatients.length)} de {filteredPatients.length} pacientes
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Anterior
+                  </Button>
+                  <span className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center gap-1"
+                  >
+                    Próxima
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Estatísticas - só mostrar quando não é um paciente específico */}
         {!specificPatientId && (

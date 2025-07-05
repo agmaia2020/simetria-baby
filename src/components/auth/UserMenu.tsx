@@ -18,17 +18,23 @@ export const UserMenu = () => {
     return null;
   }
 
+  const displayName = user.user_metadata?.nome || user.email;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="flex items-center gap-2">
           <User className="w-4 h-4" />
-          {user.email}
+          {displayName}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => window.location.href = '/perfil'}>
+          <User className="mr-2 h-4 w-4" />
+          Perfil
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={signOut} className="text-red-600">
           <LogOut className="mr-2 h-4 w-4" />
           Sair

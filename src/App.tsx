@@ -12,6 +12,7 @@ import PatientRegistration from "./pages/PatientRegistration";
 import MeasurementsRegistration from "./pages/MeasurementsRegistration";
 import PatientsList from "./pages/PatientsList";
 import PatientEvolution from "./pages/PatientEvolution";
+import UserProfile from "./pages/UserProfile";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -64,6 +65,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <PatientEvolution />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/perfil" 
+              element={
+                <ProtectedRoute>
+                  <UserProfile />
                 </ProtectedRoute>
               } 
             />
