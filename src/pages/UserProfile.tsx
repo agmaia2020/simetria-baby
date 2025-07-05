@@ -40,6 +40,11 @@ const UserProfile = () => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.currentPassword) {
+      toast.error("Digite sua senha atual");
+      return;
+    }
+    
     if (formData.newPassword !== formData.confirmPassword) {
       toast.error("As senhas não coincidem");
       return;
@@ -53,12 +58,24 @@ const UserProfile = () => {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Primeiro, re-autentica o usuário com a senha atual
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: formData.currentPassword
+      });
+
+      if (signInError) {
+        toast.error("Senha atual incorreta");
+        return;
+      }
+
+      // Se a re-autenticação foi bem-sucedida, atualiza a senha
+      const { error: updateError } = await supabase.auth.updateUser({
         password: formData.newPassword
       });
 
-      if (error) {
-        toast.error("Erro ao alterar senha: " + error.message);
+      if (updateError) {
+        toast.error("Erro ao alterar senha: " + updateError.message);
       } else {
         toast.success("Senha alterada com sucesso!");
         setFormData({
@@ -121,6 +138,35 @@ const UserProfile = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <Label htmlFor="currentPassword">Senha Atual</Label>
+                <div className="relative">
+                  <Input
+                    id="currentPassword"
+                    name="currentPassword"
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={formData.currentPassword}
+                    onChange={handleInputChange}
+                    required
+                    className="pr-10"
+                    placeholder="Digite sua senha atual"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="newPassword">Nova Senha</Label>
                 <div className="relative">
