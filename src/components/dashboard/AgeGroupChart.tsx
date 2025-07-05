@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList } from "recharts";
 
 interface AgeGroup {
   grupo: string;
@@ -58,7 +58,6 @@ export const AgeGroupChart = ({ data, chartConfig }: AgeGroupChartProps) => {
                   fontSize={12}
                 />
               </Bar>
-              />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
