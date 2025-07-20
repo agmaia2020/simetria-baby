@@ -26,7 +26,7 @@ const Index = () => {
       title: "Cadastro de Medidas",
       description: "Registrar medidas cranianas dos pacientes",
       icon: Ruler,
-      path: "/lista-pacientes",
+      path: "/cadastro-medidas",
       color: "bg-green-500 hover:bg-green-600"
     },
     {

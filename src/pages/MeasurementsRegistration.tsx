@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import Layout from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useMeasurements } from "@/hooks/useMeasurements";
+import { Search } from "lucide-react";
 
 interface MeasurementResults {
   ci: number | null;
@@ -32,9 +34,9 @@ const MeasurementsRegistration = () => {
   const { createMeasurement, loading: savingMeasurement } = useMeasurements();
 
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
-  const [loadingPatient, setLoadingPatient] = useState(!!pacienteId);
-  const [showPatientSelection, setShowPatientSelection] = useState(!pacienteId);
+  const [loadingPatient, setLoadingPatient] = useState(false);
   const [availablePatients, setAvailablePatients] = useState<PatientInfo[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [measurements, setMeasurements] = useState({
     dataCadastro: new Date().toISOString().split('T')[0],
@@ -57,14 +59,12 @@ const MeasurementsRegistration = () => {
   });
 
   useEffect(() => {
+    loadAvailablePatients();
     if (pacienteId) {
       console.log("URL params:", { pacienteId });
       loadPatientData();
-    } else {
-      console.log("Nenhum paciente_id fornecido, carregando lista de pacientes");
-      loadAvailablePatients();
     }
-  }, [pacienteId, navigate]);
+  }, [pacienteId]);
 
   const loadAvailablePatients = async () => {
     try {
@@ -116,8 +116,6 @@ const MeasurementsRegistration = () => {
       if (error) {
         console.error("Erro ao carregar paciente:", error);
         toast.error("Paciente não encontrado");
-        setShowPatientSelection(true);
-        loadAvailablePatients();
         return;
       }
 
@@ -128,24 +126,27 @@ const MeasurementsRegistration = () => {
           data_nascimento: new Date(data.data_nascimento).toLocaleDateString('pt-BR'),
           sexo: data.sexo === 'masculino' ? 'Masculino' : 'Feminino'
         });
-        setShowPatientSelection(false);
         console.log("Dados do paciente carregados:", data);
       }
     } catch (error) {
       console.error("Erro inesperado:", error);
       toast.error("Erro inesperado ao carregar paciente");
-      setShowPatientSelection(true);
-      loadAvailablePatients();
     } finally {
       setLoadingPatient(false);
     }
   };
 
-  const selectPatient = (patient: PatientInfo) => {
-    setPatientInfo(patient);
-    setShowPatientSelection(false);
-    console.log("Paciente selecionado:", patient);
+  const selectPatient = (patientId: string) => {
+    const patient = availablePatients.find(p => p.id_paciente.toString() === patientId);
+    if (patient) {
+      setPatientInfo(patient);
+      console.log("Paciente selecionado:", patient);
+    }
   };
+
+  const filteredPatients = availablePatients.filter(patient =>
+    patient.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleInputChange = (field: string, value: string) => {
     setMeasurements(prev => ({
@@ -269,7 +270,7 @@ const MeasurementsRegistration = () => {
 
   if (loadingPatient) {
     return (
-      <Layout title="Cadastro de Medidas Cranianas" backPath="/lista-pacientes">
+      <Layout title="Cadastro de Medidas Cranianas" backPath="/">
         <div className="flex justify-center items-center h-64">
           <div className="text-gray-500">Carregando...</div>
         </div>
@@ -277,95 +278,54 @@ const MeasurementsRegistration = () => {
     );
   }
 
-  if (showPatientSelection) {
-    return (
-      <Layout title="Cadastro de Medidas Cranianas" backPath="/">
-        <div className="max-w-4xl mx-auto">
+  return (
+    <Layout title="Cadastro de Medidas Cranianas" backPath="/">
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Seleção de Paciente */}
+        <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Selecione um Paciente</CardTitle>
+              <CardTitle>Selecionar Paciente</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {availablePatients.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500 mb-4">Nenhum paciente encontrado</p>
-                    <Button onClick={() => navigate("/cadastro-paciente")}>
-                      Cadastrar Primeiro Paciente
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {availablePatients.map((patient) => (
-                      <Card 
-                        key={patient.id_paciente} 
-                        className="cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => selectPatient(patient)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="grid md:grid-cols-3 gap-4">
-                            <div>
-                              <strong>Nome:</strong> {patient.nome}
-                            </div>
-                            <div>
-                              <strong>Data de Nascimento:</strong> {patient.data_nascimento}
-                            </div>
-                            <div>
-                              <strong>Sexo:</strong> {patient.sexo}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!patientInfo) {
-    return (
-      <Layout title="Cadastro de Medidas Cranianas" backPath="/">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-red-500">Erro ao carregar dados do paciente</div>
-        </div>
-      </Layout>
-    );
-  }
-
-  return (
-    <Layout title="Cadastro de Medidas Cranianas" backPath="/lista-pacientes">
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Informações do Paciente */}
-        <div className="lg:col-span-2">
-          <Card className="bg-blue-50 border-blue-200">
-            <CardHeader>
-              <CardTitle className="text-blue-800 flex justify-between items-center">
-                Informações do Paciente
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Buscar paciente por nome..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
                 <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowPatientSelection(true)}
+                  variant="outline"
+                  onClick={() => navigate("/cadastro-paciente")}
                 >
-                  Alterar Paciente
+                  + Novo Paciente
                 </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <strong>Nome:</strong> {patientInfo.nome}
-                </div>
-                <div>
-                  <strong>Data de Nascimento:</strong> {patientInfo.data_nascimento}
-                </div>
-                <div>
-                  <strong>Sexo:</strong> {patientInfo.sexo}
-                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="patient-select">Paciente</Label>
+                <Select value={patientInfo?.id_paciente.toString() || ""} onValueChange={selectPatient}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um paciente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredPatients.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        {searchTerm ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
+                      </SelectItem>
+                    ) : (
+                      filteredPatients.map((patient) => (
+                        <SelectItem key={patient.id_paciente} value={patient.id_paciente.toString()}>
+                          {patient.nome} - {patient.data_nascimento} - {patient.sexo}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
