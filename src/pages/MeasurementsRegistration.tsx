@@ -313,19 +313,18 @@ const MeasurementsRegistration = () => {
                     <SelectValue placeholder="Selecione um paciente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredPatients.length === 0 ? (
-                      <SelectItem value="" disabled>
-                        {searchTerm ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
+                    {filteredPatients.map((patient) => (
+                      <SelectItem key={patient.id_paciente} value={patient.id_paciente.toString()}>
+                        {patient.nome} - {patient.data_nascimento} - {patient.sexo}
                       </SelectItem>
-                    ) : (
-                      filteredPatients.map((patient) => (
-                        <SelectItem key={patient.id_paciente} value={patient.id_paciente.toString()}>
-                          {patient.nome} - {patient.data_nascimento} - {patient.sexo}
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
+                {filteredPatients.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    {searchTerm ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
