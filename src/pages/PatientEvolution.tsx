@@ -275,19 +275,45 @@ const PatientEvolution = () => {
                     <XAxis dataKey="data" />
                     <YAxis domain={[65, 95]} />
                     <Tooltip />
-                    <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="5 5" />
-                    <ReferenceLine y={85} stroke="#ef4444" strokeDasharray="5 5" />
+                    {/* Faixa Dolicocefalia: < 75 (azul) */}
+                    <defs>
+                      <linearGradient id="dolicocefalia" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="normal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="braquicefalia" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <ReferenceLine y={75} stroke="#10b981" strokeDasharray="5 5" label="Normal" />
+                    <ReferenceLine y={85} stroke="#f59e0b" strokeDasharray="5 5" label="Braquicefalia" />
                     <Area 
                       type="monotone" 
                       dataKey="CI" 
                       stroke="#2563eb" 
-                      fill="#3b82f6" 
-                      fillOpacity={0.3}
+                      fill="url(#normal)" 
+                      fillOpacity={1}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
-                <div className="text-xs text-gray-500 mt-2">
-                  Faixa normal: 75-85% | Linhas tracejadas indicam limites
+                <div className="text-xs text-gray-500 mt-2 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-400 rounded"></div>
+                    <span>Dolicocefalia: &lt;75%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-400 rounded"></div>
+                    <span>Normal: 75-85%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                    <span>Braquicefalia: &gt;85%</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -306,20 +332,53 @@ const PatientEvolution = () => {
                     <XAxis dataKey="data" />
                     <YAxis domain={[0, 15]} />
                     <Tooltip />
-                    <ReferenceLine y={3.5} stroke="#10b981" strokeDasharray="5 5" />
-                    <ReferenceLine y={6.25} stroke="#f59e0b" strokeDasharray="5 5" />
-                    <ReferenceLine y={8.75} stroke="#ef4444" strokeDasharray="5 5" />
+                    <defs>
+                      <linearGradient id="cvaiNormal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="cvaiLeve" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="cvaiModerada" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f97316" stopOpacity={0.3}/>
+                        <stop offset="100%" stopColor="#f97316" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="cvaiGrave" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.3}/>
+                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <ReferenceLine y={3.5} stroke="#10b981" strokeDasharray="5 5" label="Normal" />
+                    <ReferenceLine y={6.25} stroke="#f59e0b" strokeDasharray="5 5" label="Leve" />
+                    <ReferenceLine y={8.75} stroke="#ef4444" strokeDasharray="5 5" label="Moderada" />
                     <Area 
                       type="monotone" 
                       dataKey="CVAI" 
                       stroke="#7c3aed" 
-                      fill="#8b5cf6" 
-                      fillOpacity={0.3}
+                      fill="url(#cvaiNormal)" 
+                      fillOpacity={1}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
-                <div className="text-xs text-gray-500 mt-2">
-                  Normal: &lt;3.5% | Leve: 3.5-6.25% | Moderada: 6.25-8.75% | Grave: &gt;8.75%
+                <div className="text-xs text-gray-500 mt-2 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-400 rounded"></div>
+                    <span>Normal: &lt;3.5%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                    <span>Leve: 3.5-6.25%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-orange-400 rounded"></div>
+                    <span>Moderada: 6.25-8.75%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-400 rounded"></div>
+                    <span>Grave: &gt;8.75%</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
