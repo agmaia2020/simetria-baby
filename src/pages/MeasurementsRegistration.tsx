@@ -396,7 +396,7 @@ const MeasurementsRegistration = () => {
                   {results.cvaiClassification}
                 </span>}
               <div className="text-xs text-gray-500 mt-2">
-                Fórmula: ((MÁX(PE,PD) - MÍN(PE,PD))/MÁX(PE,PD))*100<br />
+                Fórmula: ((D - d)/D)*100, onde MÁX(PE,PD) = D e MÍN(PE,PD) = d<br />
                 &lt;3,5%: normal | 3,5–6,25%: leve | 6,25–8,75%: moderada | &gt;8,75%: grave
               </div>
             </div>
