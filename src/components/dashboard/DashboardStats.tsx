@@ -33,7 +33,7 @@ export const DashboardStats = ({
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.averageAge} anos</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.averageAge} meses</div>
             <p className="text-xs text-muted-foreground">Média geral</p>
           </CardContent>
         </Card>

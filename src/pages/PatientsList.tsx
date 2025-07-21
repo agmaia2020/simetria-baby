@@ -92,15 +92,34 @@ const PatientsList = () => {
     const birthDate = new Date(birthDateString);
     const currentDate = new Date();
     
-    let age = currentDate.getFullYear() - birthDate.getFullYear();
-    const monthDiff = currentDate.getMonth() - birthDate.getMonth();
+    let years = currentDate.getFullYear() - birthDate.getFullYear();
+    let months = currentDate.getMonth() - birthDate.getMonth();
+    let days = currentDate.getDate() - birthDate.getDate();
     
-    // Ajustar idade se ainda não fez aniversário no ano atual
-    if (monthDiff < 0 || (monthDiff === 0 && currentDate.getDate() < birthDate.getDate())) {
-      age = age - 1;
+    // Ajustar se o dia ainda não passou
+    if (days < 0) {
+      months--;
+      // Pegar o último dia do mês anterior
+      const lastDayOfPrevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate();
+      days += lastDayOfPrevMonth;
     }
     
-    return age;
+    // Ajustar se o mês ainda não passou
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    
+    // Formatar idade em meses e dias
+    if (years === 0) {
+      if (months === 0) {
+        return `${days} ${days === 1 ? 'dia' : 'dias'}`;
+      } else {
+        return `${months} ${months === 1 ? 'mês' : 'meses'}${days > 0 ? ` e ${days} ${days === 1 ? 'dia' : 'dias'}` : ''}`;
+      }
+    } else {
+      return `${years} ${years === 1 ? 'ano' : 'anos'}${months > 0 ? ` e ${months} ${months === 1 ? 'mês' : 'meses'}` : ''}`;
+    }
   };
 
   const getSexBadgeColor = (sexo: string) => {
@@ -213,7 +232,7 @@ const PatientsList = () => {
                       <TableRow key={patient.id_paciente} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{patient.nome}</TableCell>
                         <TableCell>{formatDate(patient.data_nascimento)}</TableCell>
-                        <TableCell>{calculateAge(patient.data_nascimento)} anos</TableCell>
+                        <TableCell>{calculateAge(patient.data_nascimento)}</TableCell>
                         <TableCell>
                           <Badge className={getSexBadgeColor(patient.sexo)}>
                             {patient.sexo === "masculino" ? "M" : "F"}

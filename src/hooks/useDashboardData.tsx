@@ -72,23 +72,31 @@ export const useDashboardData = () => {
       const malePatients = patients?.filter(p => p.sexo === 'masculino').length || 0;
       const femalePatients = patients?.filter(p => p.sexo === 'feminino').length || 0;
       
-      // Calcular idade média - CORRIGIDO
-      let averageAge = 0;
+      // Calcular idade média em meses - CORRIGIDO
+      let averageAgeInMonths = 0;
       if (patients && patients.length > 0) {
-        const totalAge = patients.reduce((sum, patient) => {
+        const totalAgeInMonths = patients.reduce((sum, patient) => {
           const birthDate = new Date(patient.data_nascimento);
-          const age = currentDate.getFullYear() - birthDate.getFullYear();
-          const monthDiff = currentDate.getMonth() - birthDate.getMonth();
+          let years = currentDate.getFullYear() - birthDate.getFullYear();
+          let months = currentDate.getMonth() - birthDate.getMonth();
+          let days = currentDate.getDate() - birthDate.getDate();
           
-          // Ajustar idade se ainda não fez aniversário no ano atual
-          const adjustedAge = (monthDiff < 0 || (monthDiff === 0 && currentDate.getDate() < birthDate.getDate())) 
-            ? age - 1 
-            : age;
+          // Ajustar se o dia ainda não passou
+          if (days < 0) {
+            months--;
+          }
           
-          return sum + adjustedAge;
+          // Ajustar se o mês ainda não passou
+          if (months < 0) {
+            years--;
+            months += 12;
+          }
+          
+          const ageInMonths = years * 12 + months;
+          return sum + ageInMonths;
         }, 0);
         
-        averageAge = totalAge / patients.length;
+        averageAgeInMonths = totalAgeInMonths / patients.length;
       }
 
       // Registros recentes (último mês)
@@ -101,7 +109,7 @@ export const useDashboardData = () => {
         totalPatients,
         malePatients,
         femalePatients,
-        averageAge: Math.round(averageAge * 10) / 10,
+        averageAge: Math.round(averageAgeInMonths * 10) / 10,
         patientsWithMeasurements: uniquePatientsWithMeasurements,
         recentRegistrations
       });
@@ -119,21 +127,31 @@ export const useDashboardData = () => {
 
       setRaceData(raceChartData);
 
-      // Grupos por idade - calculados com a idade corrigida
+      // Grupos por idade em meses - calculados com a idade corrigida
       const ageGroupStats = patients?.reduce((acc: Record<string, number>, patient) => {
         const birthDate = new Date(patient.data_nascimento);
-        const age = currentDate.getFullYear() - birthDate.getFullYear();
-        const monthDiff = currentDate.getMonth() - birthDate.getMonth();
+        let years = currentDate.getFullYear() - birthDate.getFullYear();
+        let months = currentDate.getMonth() - birthDate.getMonth();
+        let days = currentDate.getDate() - birthDate.getDate();
         
-        // Ajustar idade se ainda não fez aniversário no ano atual
-        const adjustedAge = (monthDiff < 0 || (monthDiff === 0 && currentDate.getDate() < birthDate.getDate())) 
-          ? age - 1 
-          : age;
+        // Ajustar se o dia ainda não passou
+        if (days < 0) {
+          months--;
+        }
+        
+        // Ajustar se o mês ainda não passou
+        if (months < 0) {
+          years--;
+          months += 12;
+        }
+        
+        const ageInMonths = years * 12 + months;
 
         let group = '';
-        if (adjustedAge < 1) group = '0-1 anos';
-        else if (adjustedAge < 2) group = '1-2 anos';
-        else if (adjustedAge < 3) group = '2-3 anos';
+        if (ageInMonths < 6) group = '0-6 meses';
+        else if (ageInMonths < 12) group = '6-12 meses';
+        else if (ageInMonths < 24) group = '1-2 anos';
+        else if (ageInMonths < 36) group = '2-3 anos';
         else group = '3+ anos';
         
         acc[group] = (acc[group] || 0) + 1;

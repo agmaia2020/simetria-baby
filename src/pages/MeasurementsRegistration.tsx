@@ -78,7 +78,7 @@ const MeasurementsRegistration = () => {
       }
       const patientsWithFormattedDate = data?.map(patient => ({
         ...patient,
-        data_nascimento: new Date(patient.data_nascimento).toLocaleDateString('pt-BR'),
+        data_nascimento: new Date(patient.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR'),
         sexo: patient.sexo === 'masculino' ? 'Masculino' : 'Feminino'
       })) || [];
       setAvailablePatients(patientsWithFormattedDate);
@@ -105,10 +105,12 @@ const MeasurementsRegistration = () => {
         return;
       }
       if (data) {
+        // Corrigir a formatação da data para evitar problemas de timezone
+        const birthDate = new Date(data.data_nascimento + 'T00:00:00');
         setPatientInfo({
           id_paciente: data.id_paciente,
           nome: data.nome,
-          data_nascimento: new Date(data.data_nascimento).toLocaleDateString('pt-BR'),
+          data_nascimento: birthDate.toLocaleDateString('pt-BR'),
           sexo: data.sexo === 'masculino' ? 'Masculino' : 'Feminino'
         });
         console.log("Dados do paciente carregados:", data);
@@ -167,11 +169,12 @@ const MeasurementsRegistration = () => {
       }
     }
 
-    // Calcular CVAI (Índice de Assimetria)
+    // Calcular CVAI (Índice de Assimetria) - Nova fórmula
     if (pd && pe) {
+      const maxVal = Math.max(pd, pe);
       const minVal = Math.min(pd, pe);
-      if (minVal > 0) {
-        const cvai = Math.abs((pe - pd) / minVal) * 100;
+      if (maxVal > 0) {
+        const cvai = ((maxVal - minVal) / maxVal) * 100;
         newResults.cvai = cvai;
         if (cvai < 3.5) {
           newResults.cvaiClassification = "Normal";
@@ -254,7 +257,13 @@ const MeasurementsRegistration = () => {
         </div>
       </Layout>;
   }
-  return <Layout title="Cadastro de Medidas Cranianas" backPath="/">
+  const getBackPath = () => {
+    // Se veio de um paciente específico (tem pacienteId na URL), volta para lista de pacientes
+    // Senão, volta para a página inicial
+    return pacienteId ? "/lista-pacientes" : "/";
+  };
+
+  return <Layout title="Cadastro de Medidas Cranianas" backPath={getBackPath()}>
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Seleção de Paciente */}
         <div className="lg:col-span-2">
@@ -387,7 +396,7 @@ const MeasurementsRegistration = () => {
                   {results.cvaiClassification}
                 </span>}
               <div className="text-xs text-gray-500 mt-2">
-                Fórmula: (PE-PD/min(PE,PD))*100<br />
+                Fórmula: ((MÁX(PE,PD) - MÍN(PE,PD))/MÁX(PE,PD))*100<br />
                 &lt;3,5%: normal | 3,5–6,25%: leve | 6,25–8,75%: moderada | &gt;8,75%: grave
               </div>
             </div>
