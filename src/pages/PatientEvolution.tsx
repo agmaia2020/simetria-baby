@@ -192,7 +192,7 @@ const PatientEvolution = () => {
     
     let cvai = null, cvaiClass = "-";
     if (pd && pe && Math.min(pd, pe) > 0) {
-      cvai = Math.abs((pe - pd) / Math.min(pd, pe)) * 100;
+      cvai = ((Math.max(pd,pe) - Math.min(pd, pe)) / Math.max(pd,pe))  * 100;
       cvaiClass = cvai < 3.5 ? "Normal" : cvai <= 6.25 ? "Leve" : cvai <= 8.75 ? "Moderada" : "Grave";
     }
     
