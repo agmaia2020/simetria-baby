@@ -34,7 +34,7 @@ const Index = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <img src={logoImage} alt="Logo Simetrik Baby" className="h-21 w-auto object-contain" />
+            <img src={logoImage} alt="Logo Simetrik Baby" className="h-20 w-20 object-contain" />
           </div>
           <h1 className="text-4xl font-bold text-gray-800 mb-4">Simetrik Baby</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
