@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Ruler, List, UserPlus, BarChart } from "lucide-react";
-import logoImage from "@/assets/logo.png";
+import logoImage from "/lovable-uploads/47f5ae1e-1be7-4cfa-a11b-981b39373714.png";
 const Index = () => {
   const navigate = useNavigate();
   const menuItems = [{
