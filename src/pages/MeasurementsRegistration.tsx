@@ -272,12 +272,19 @@ const MeasurementsRegistration = () => {
               <CardTitle>Selecionar Paciente</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  
-                  
+              <div className="space-y-2">
+                <Label htmlFor="search">Buscar Paciente</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="search"
+                    type="text"
+                    placeholder="Digite o nome do paciente..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
                 </div>
-                
               </div>
               
               <div className="space-y-2">

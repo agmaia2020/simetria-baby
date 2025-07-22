@@ -191,8 +191,8 @@ const PatientEvolution = () => {
     }
     
     let cvai = null, cvaiClass = "-";
-    if (pd && pe && Math.min(pd, pe) > 0) {
-      cvai = ((Math.max(pd,pe) - Math.min(pd, pe)) / Math.max(pd,pe))  * 100;
+    if (pd && pe && Math.max(pd, pe) > 0) {
+      cvai = ((Math.max(pd, pe) - Math.min(pd, pe)) / Math.max(pd, pe)) * 100;
       cvaiClass = cvai < 3.5 ? "Normal" : cvai <= 6.25 ? "Leve" : cvai <= 8.75 ? "Moderada" : "Grave";
     }
     
@@ -275,29 +275,45 @@ const PatientEvolution = () => {
                     <XAxis dataKey="data" />
                     <YAxis domain={[65, 95]} />
                     <Tooltip />
-                    {/* Faixa Dolicocefalia: < 75 (azul) */}
                     <defs>
-                      <linearGradient id="dolicocefalia" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                      </linearGradient>
-                      <linearGradient id="normal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.3}/>
-                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.1}/>
-                      </linearGradient>
-                      <linearGradient id="braquicefalia" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                      <linearGradient id="ciGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity={0.2}/>
                       </linearGradient>
                     </defs>
-                    <ReferenceLine y={75} stroke="#10b981" strokeDasharray="5 5" label="Normal" />
-                    <ReferenceLine y={85} stroke="#f59e0b" strokeDasharray="5 5" label="Braquicefalia" />
+                    {/* Áreas de fundo coloridas */}
                     <Area 
+                      type="monotone" 
+                      dataKey={() => 95} 
+                      fill="#3b82f6" 
+                      fillOpacity={0.1} 
+                      stroke="none"
+                      stackId="bg"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey={() => 85} 
+                      fill="#10b981" 
+                      fillOpacity={0.15} 
+                      stroke="none"
+                      stackId="bg"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey={() => 75} 
+                      fill="#3b82f6" 
+                      fillOpacity={0.1} 
+                      stroke="none"
+                      stackId="bg"
+                    />
+                    <ReferenceLine y={75} stroke="#10b981" strokeDasharray="5 5" />
+                    <ReferenceLine y={85} stroke="#f59e0b" strokeDasharray="5 5" />
+                    <Line 
                       type="monotone" 
                       dataKey="CI" 
                       stroke="#2563eb" 
-                      fill="url(#normal)" 
-                      fillOpacity={1}
+                      strokeWidth={3}
+                      dot={{ fill: "#2563eb", strokeWidth: 2, r: 5 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -333,32 +349,53 @@ const PatientEvolution = () => {
                     <YAxis domain={[0, 15]} />
                     <Tooltip />
                     <defs>
-                      <linearGradient id="cvaiNormal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.3}/>
-                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.1}/>
-                      </linearGradient>
-                      <linearGradient id="cvaiLeve" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.1}/>
-                      </linearGradient>
-                      <linearGradient id="cvaiModerada" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f97316" stopOpacity={0.3}/>
-                        <stop offset="100%" stopColor="#f97316" stopOpacity={0.1}/>
-                      </linearGradient>
-                      <linearGradient id="cvaiGrave" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.3}/>
-                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.1}/>
+                      <linearGradient id="cvaiGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.2}/>
                       </linearGradient>
                     </defs>
-                    <ReferenceLine y={3.5} stroke="#10b981" strokeDasharray="5 5" label="Normal" />
-                    <ReferenceLine y={6.25} stroke="#f59e0b" strokeDasharray="5 5" label="Leve" />
-                    <ReferenceLine y={8.75} stroke="#ef4444" strokeDasharray="5 5" label="Moderada" />
+                    {/* Áreas de fundo coloridas para as faixas */}
                     <Area 
+                      type="monotone" 
+                      dataKey={() => 15} 
+                      fill="#ef4444" 
+                      fillOpacity={0.1} 
+                      stroke="none"
+                      stackId="bg"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey={() => 8.75} 
+                      fill="#f97316" 
+                      fillOpacity={0.15} 
+                      stroke="none"
+                      stackId="bg"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey={() => 6.25} 
+                      fill="#f59e0b" 
+                      fillOpacity={0.15} 
+                      stroke="none"
+                      stackId="bg"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey={() => 3.5} 
+                      fill="#10b981" 
+                      fillOpacity={0.15} 
+                      stroke="none"
+                      stackId="bg"
+                    />
+                    <ReferenceLine y={3.5} stroke="#10b981" strokeDasharray="5 5" />
+                    <ReferenceLine y={6.25} stroke="#f59e0b" strokeDasharray="5 5" />
+                    <ReferenceLine y={8.75} stroke="#ef4444" strokeDasharray="5 5" />
+                    <Line 
                       type="monotone" 
                       dataKey="CVAI" 
                       stroke="#7c3aed" 
-                      fill="url(#cvaiNormal)" 
-                      fillOpacity={1}
+                      strokeWidth={3}
+                      dot={{ fill: "#7c3aed", strokeWidth: 2, r: 5 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
