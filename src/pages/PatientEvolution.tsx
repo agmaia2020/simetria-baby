@@ -91,12 +91,35 @@ const PatientEvolution = () => {
     if (!pacienteId) return;
 
     const measurementsData = await getMeasurementsByPatientId(parseInt(pacienteId));
-    const measurementsWithClassifications = measurementsData.map(measurement => ({
-      ...measurement,
-      ciClass: getClassification(measurement.ci, 'ci'),
-      cvaiClass: getClassification(measurement.cvai, 'cvai'),
-      tbcClass: getClassification(measurement.tbc, 'tbc')
-    }));
+    const measurementsWithClassifications = measurementsData.map(measurement => {
+      // Se os índices não estão salvos no banco, calcular com base nos dados brutos
+      let ci = measurement.ci;
+      let cvai = measurement.cvai;
+      let tbc = measurement.tbc;
+      
+      // Recalcular se os valores não existem no banco
+      if (ci === null && measurement.ap && measurement.bp && measurement.ap > 0) {
+        ci = (measurement.bp / measurement.ap) * 100;
+      }
+      
+      if (cvai === null && measurement.pd && measurement.pe && Math.max(measurement.pd, measurement.pe) > 0) {
+        cvai = ((Math.max(measurement.pd, measurement.pe) - Math.min(measurement.pd, measurement.pe)) / Math.max(measurement.pd, measurement.pe)) * 100;
+      }
+      
+      if (tbc === null && measurement.td && measurement.te) {
+        tbc = Math.abs(measurement.td - measurement.te);
+      }
+      
+      return {
+        ...measurement,
+        ci: ci,
+        cvai: cvai,
+        tbc: tbc,
+        ciClass: getClassification(ci, 'ci'),
+        cvaiClass: getClassification(cvai, 'cvai'),
+        tbcClass: getClassification(tbc, 'tbc')
+      };
+    });
     setMeasurements(measurementsWithClassifications);
   };
 
@@ -146,6 +169,9 @@ const PatientEvolution = () => {
   const handleSaveEdit = async () => {
     if (!editingId || !editingData.id_medida) return;
 
+    // Calcular os índices antes de salvar
+    const indices = calculateIndices(editingData);
+    
     const updateData = {
       data_medicao: editingData.data_medicao,
       pc: editingData.pc,
@@ -154,7 +180,10 @@ const PatientEvolution = () => {
       pd: editingData.pd,
       pe: editingData.pe,
       td: editingData.td,
-      te: editingData.te
+      te: editingData.te,
+      ci: indices.ci,
+      cvai: indices.cvai,
+      tbc: indices.tbc
     };
 
     const success = await updateMeasurement(editingId, updateData);
