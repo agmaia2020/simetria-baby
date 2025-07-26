@@ -1,85 +1,116 @@
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Ruler, List, UserPlus, BarChart } from "lucide-react";
+import { BarChart, UserPlus, Ruler, List, UserCircle } from "lucide-react";
+
+// O logo precisa ser importado. Certifique-se que o caminho está correto.
 import logoImage from "/lovable-uploads/47f5ae1e-1be7-4cfa-a11b-981b39373714.png";
+
 const Index = () => {
   const navigate = useNavigate();
-  const menuItems = [{
-    title: "Dashboard",
-    description: "Visualizar estatísticas e relatórios dos pacientes",
-    icon: BarChart,
-    path: "/dashboard",
-    color: "bg-indigo-500 hover:bg-indigo-600"
-  }, {
-    title: "Cadastro de Pacientes",
-    description: "Registrar novos pacientes no sistema",
-    icon: UserPlus,
-    path: "/cadastro-paciente",
-    color: "bg-blue-500 hover:bg-blue-600"
-  }, {
-    title: "Cadastro de Medidas",
-    description: "Registrar medidas cranianas dos pacientes",
-    icon: Ruler,
-    path: "/cadastro-medidas",
-    color: "bg-green-500 hover:bg-green-600"
-  }, {
-    title: "Lista de Pacientes",
-    description: "Visualizar e gerenciar pacientes cadastrados",
-    icon: List,
-    path: "/lista-pacientes",
-    color: "bg-purple-500 hover:bg-purple-600"
-  }];
-  return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <div className="flex justify-center mb-6">
-            <img src={logoImage} alt="Logo Simetrik Baby" className="h-52 w-auto object-contain" />
+
+  // A lógica e os dados permanecem os mesmos.
+  const menuItems = [
+    {
+      title: "Dashboard",
+      description: "Visualizar estatísticas e relatórios",
+      icon: BarChart,
+      path: "/dashboard",
+      color: "bg-indigo-100 text-indigo-600",
+    },
+    {
+      title: "Cadastro de Pacientes",
+      description: "Registrar novos pacientes no sistema",
+      icon: UserPlus,
+      path: "/cadastro-paciente",
+      color: "bg-blue-100 text-blue-600",
+    },
+    {
+      title: "Cadastro de Medidas",
+      description: "Registrar medidas cranianas dos pacientes",
+      icon: Ruler,
+      path: "/cadastro-medidas",
+      color: "bg-green-100 text-green-600",
+    },
+    {
+      title: "Lista de Pacientes",
+      description: "Visualizar e gerenciar pacientes",
+      icon: List,
+      path: "/lista-pacientes",
+      color: "bg-purple-100 text-purple-600",
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* 1. Barra de Navegação Superior (Header) */}
+      <header className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo e Título do Sistema */}
+            <div className="flex items-center space-x-3">
+              <img src={logoImage} alt="Logo Simetrik Baby" className="h-8 w-auto" />
+              <span className="text-xl font-semibold text-gray-800">Simetrik Baby</span>
+            </div>
+            {/* Ícone de Perfil do Usuário */}
+            <div className="flex items-center">
+              <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700">
+                <UserCircle className="w-7 h-7" />
+              </button>
+            </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">Simetrik Baby</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Sistema de cadastro de pacientes e medições cranianas com cálculos automáticos de índices
+        </div>
+      </header>
+
+      {/* 2. Conteúdo Principal */}
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Cabeçalho da Página */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold text-gray-900">Painel de Controle</h1>
+          <p className="mt-1 text-lg text-gray-600">
+            Selecione uma das opções abaixo para começar.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-          {menuItems.map((item, index) => {
-          const Icon = item.icon;
-          return <Card key={index} className="hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer h-full flex flex-col" onClick={() => navigate(item.path)}>
-                <CardHeader className="text-center flex-grow">
-                  <div className={`w-16 h-16 rounded-full ${item.color} flex items-center justify-center mx-auto mb-4`}>
-                    <Icon className="w-8 h-8 text-white" />
+        {/* 3. Grid de Ações (Cards Refatorados) */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Card
+                key={item.title}
+                onClick={() => navigate(item.path)}
+                className="hover:shadow-lg hover:-translate-y-1 transition-transform duration-300 cursor-pointer group"
+              >
+                <CardHeader className="flex-row items-start gap-4 space-y-0">
+                  <div className={`w-12 h-12 rounded-lg ${item.color} flex items-center justify-center flex-shrink-0`}>
+                    <Icon className="w-6 h-6" />
                   </div>
-                  <CardTitle className="text-xl">{item.title}</CardTitle>
-                  <CardDescription className="text-sm">
-                    {item.description}
-                  </CardDescription>
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-gray-800">{item.title}</CardTitle>
+                    <CardDescription className="mt-1 text-sm">
+                      {item.description}
+                    </CardDescription>
+                  </div>
                 </CardHeader>
-                <CardContent className="mt-auto">
-                  <Button className="w-full" onClick={e => {
-                e.stopPropagation();
-                navigate(item.path);
-              }}>
-                    Acessar
-                  </Button>
-                </CardContent>
-              </Card>;
-        })}
+              </Card>
+            );
+          })}
         </div>
-
-        <div className="mt-16 text-center">
-          <div className="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-              Sobre o Sistema
-            </h2>
-            <p className="text-gray-600 leading-relaxed">
-              Este sistema permite o cadastro de pacientes e registro de medidas cranianas, 
-              calculando automaticamente índices importantes como Índice Cefálico (CI), 
-              Índice de Assimetria (CVAI) e Torção da Base do Crânio (TBC).
-            </p>
+      </main>
+      
+      {/* 4. Rodapé */}
+      <footer className="mt-16 pb-8 text-center text-gray-500">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+              <p className="text-sm">
+                  <strong>Sobre o Sistema:</strong> Este sistema permite o cadastro de pacientes e registro de medidas cranianas, 
+                  calculando automaticamente índices importantes como Índice Cefálico (CI), 
+                  Índice de Assimetria (CVAI) e Torção da Base do Crânio (TBC).
+              </p>
+              <p className="mt-2 text-xs">&copy; {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
           </div>
-        </div>
-      </div>
-    </div>;
+      </footer>
+    </div>
+  );
 };
+
 export default Index;
