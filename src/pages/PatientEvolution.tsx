@@ -40,7 +40,17 @@ const PatientEvolution = () => {
     loadMeasurements();
   }, [pacienteId, navigate]);
 
-  const loadPatientData = async () => { /* ...Sua função sem alterações... */ };
+  const loadPatientData = async () => {
+    if (!pacienteId) return;
+    try {
+      setLoadingPatient(true);
+      const { data, error } = await supabase.from('dpacientes').select('id_paciente, nome, data_nascimento, sexo').eq('id_paciente', parseInt(pacienteId)).eq('ativo', true).single();
+      if (error) throw error;
+      setPatientInfo({ id_paciente: data.id_paciente, nome: data.nome, data_nascimento: new Date(data.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR'), sexo: data.sexo === 'masculino' ? 'Masculino' : 'Feminino' });
+    } catch (error) { toast.error("Erro ao carregar dados do paciente"); navigate("/lista-pacientes"); } 
+    finally { setLoadingPatient(false); }
+  };
+
   const loadMeasurements = async () => {
     if (!pacienteId) return;
     const data = await getMeasurementsByPatientId(parseInt(pacienteId));
@@ -51,31 +61,54 @@ const PatientEvolution = () => {
     setMeasurements(classifiedData);
   };
 
-  // --- FUNÇÃO DE CÁLCULO CORRIGIDA ---
   const calculateIndices = (data: Partial<Measurement>) => {
     const { ap, bp, pd, pe, td, te } = data;
     let ci = data.ci, cvai = data.cvai, tbc = data.tbc;
-    
     if (ci === null && ap && bp && ap > 0) ci = (bp / ap) * 100;
-    
-    // CORREÇÃO: Usando Math.abs() para garantir que o CVAI seja sempre positivo.
-    if (cvai === null && pd && pe && Math.max(pd, pe) > 0) {
-      cvai = (Math.abs(pd - pe) / Math.max(pd, pe)) * 100;
-    }
-    
+    if (cvai === null && pd && pe && Math.max(pd, pe) > 0) cvai = (Math.abs(pd - pe) / Math.max(pd, pe)) * 100;
     if (tbc === null && td && te) tbc = Math.abs(td - te);
-    
     return { ci, cvai, tbc, ciClass: getClassification(ci, 'ci'), cvaiClass: getClassification(cvai, 'cvai'), tbcClass: getClassification(tbc, 'tbc') };
   };
 
-  const getClassification = (value: number | null, type: 'ci' | 'cvai' | 'tbc'): string => { /* ...Sua função sem alterações... */ };
+  const getClassification = (value: number | null, type: 'ci' | 'cvai' | 'tbc'): string => {
+    if (value === null) return "-";
+    switch (type) {
+      case 'ci': if (value < 75) return "Dolicocefalia"; if (value <= 85) return "Normal"; return "Braquicefalia";
+      case 'cvai': if (value < 3.5) return "Normal"; if (value <= 6.25) return "Leve"; if (value <= 8.75) return "Moderada"; return "Grave";
+      case 'tbc': if (value <= 3) return "Leve"; if (value <= 6) return "Moderada"; return "Severa";
+      default: return "-";
+    }
+  };
+
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-  const getClassificationColor = (c: string) => { /* ...Sua função de cor... */ };
+  const getClassificationColor = (classification: string) => {
+    switch (classification.toLowerCase()) {
+      case "normal": return "bg-green-100 text-green-800";
+      case "leve": return "bg-yellow-100 text-yellow-800";
+      case "moderada": return "bg-orange-100 text-orange-800";
+      case "grave": case "severa": return "bg-red-100 text-red-800";
+      case "dolicocefalia": return "bg-blue-100 text-blue-800";
+      case "braquicefalia": return "bg-purple-100 text-purple-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+  
   const handleEdit = (m: MeasurementDisplay) => { setEditingId(m.id_medida!); setEditingData(m); };
   const handleCancelEdit = () => { setEditingId(null); setEditingData({}); };
-  const handleDelete = async (id: number) => { /* ...Sua função sem alterações... */ };
-  const handleSaveEdit = async () => { /* ...Sua função sem alterações... */ };
-  const handleInputChange = (field: keyof Measurement, value: string) => { /* ...Sua função sem alterações... */ };
+  const handleDelete = async (id: number) => { if (window.confirm("Tem certeza?")) { const ok = await deleteMeasurement(id); if (ok) { toast.success("Medida excluída!"); loadMeasurements(); } } };
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+    const indices = calculateIndices(editingData);
+    const updateData = { ...editingData, ...indices };
+    const success = await updateMeasurement(editingId, updateData);
+    if (success) { handleCancelEdit(); toast.success("Medida atualizada!"); loadMeasurements(); }
+  };
+  const handleInputChange = (field: keyof Measurement, value: string) => {
+    const numValue = value === "" ? null : parseFloat(value);
+    const updated = { ...editingData, [field]: numValue };
+    const indices = calculateIndices(updated);
+    setEditingData({ ...updated, ...indices });
+  };
 
   const chartData = measurements.map(m => ({ data: formatDate(m.data_medicao), CI: m.ci, CVAI: m.cvai }));
   // --- FIM DA SUA LÓGICA DE COMPONENTE ---
@@ -104,46 +137,69 @@ const PatientEvolution = () => {
           ) : (<div className="text-lg text-red-500">Paciente não encontrado.</div>)}
         </div>
 
-        {/* --- LÓGICA DE EXIBIÇÃO DOS GRÁFICOS APRIMORADA --- */}
         {measurements.length > 1 ? (
           <div className="grid lg:grid-cols-2 gap-8 mb-8">
-            {/* Gráfico CI */}
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-blue-600" />Evolução do Índice Cefálico (CI)</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  {/* ... Seu código do gráfico CI ... */}
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            {/* Gráfico CVAI */}
-            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-purple-600" />Evolução do CVAI (%)</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  {/* ... Seu código do gráfico CVAI ... */}
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            {/* Gráficos de Evolução */}
           </div>
-        ) : measurements.length === 1 && (
-          // MENSAGEM INFORMATIVA PARA MEDIÇÃO ÚNICA
+        ) : !loading && measurements.length === 1 && (
           <Card className="mb-8 bg-blue-50 border-blue-200">
             <CardContent className="p-6 flex items-center gap-4">
-              <Info className="w-6 h-6 text-blue-600" />
+              <Info className="w-6 h-6 text-blue-600 flex-shrink-0" />
               <div>
                 <h4 className="font-semibold text-blue-800">Aguardando mais dados</h4>
-                <p className="text-sm text-blue-700">Os gráficos de evolução aparecerão aqui quando houver duas ou mais medições registradas para este paciente.</p>
+                <p className="text-sm text-blue-700">Os gráficos de evolução aparecerão aqui quando houver duas ou mais medições registradas.</p>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Tabela de Histórico */}
+        {/* Tabela de Histórico com renderização corrigida */}
         <Card>
           <CardHeader><CardTitle>Histórico de Medidas</CardTitle></CardHeader>
           <CardContent className="p-0">
-            {/* ... Seu código da tabela ... */}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead><TableHead>PC</TableHead><TableHead>AP</TableHead><TableHead>BP</TableHead><TableHead>PD</TableHead><TableHead>PE</TableHead><TableHead>TD</TableHead><TableHead>TE</TableHead>
+                    <TableHead>CI</TableHead><TableHead>CVAI</TableHead><TableHead>TBC</TableHead><TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow><TableCell colSpan={12} className="text-center h-24">Carregando medidas...</TableCell></TableRow>
+                  ) : measurements.length === 0 ? (
+                    <TableRow><TableCell colSpan={12} className="text-center h-24 text-gray-500">Nenhuma medida encontrada para este paciente.</TableCell></TableRow>
+                  ) : (
+                    measurements.map((m) => (
+                      <TableRow key={m.id_medida}>
+                        {editingId === m.id_medida ? (
+                          <>
+                            <TableCell><Input type="date" value={editingData.data_medicao?.split('T')[0] || ""} onChange={(e) => setEditingData({ ...editingData, data_medicao: e.target.value })} className="w-36" /></TableCell>
+                            {[ 'pc', 'ap', 'bp', 'pd', 'pe', 'td', 'te'].map(field => (
+                              <TableCell key={field}><Input type="number" step="0.1" value={editingData[field as keyof Measurement] || ""} onChange={(e) => handleInputChange(field as keyof Measurement, e.target.value)} className="w-20" /></TableCell>
+                            ))}
+                            <TableCell>{editingData.ci?.toFixed(2)}</TableCell>
+                            <TableCell>{editingData.cvai?.toFixed(2)}%</TableCell>
+                            <TableCell>{editingData.tbc?.toFixed(1)}</TableCell>
+                            <TableCell><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={handleSaveEdit}><Save className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={handleCancelEdit}><X className="w-4 h-4" /></Button></div></TableCell>
+                          </>
+                        ) : (
+                          <>
+                            <TableCell>{formatDate(m.data_medicao)}</TableCell>
+                            <TableCell>{m.pc}</TableCell><TableCell>{m.ap}</TableCell><TableCell>{m.bp}</TableCell><TableCell>{m.pd}</TableCell><TableCell>{m.pe}</TableCell><TableCell>{m.td}</TableCell><TableCell>{m.te}</TableCell>
+                            <TableCell><Badge variant="outline" className={getClassificationColor(m.ciClass)}>{m.ci?.toFixed(2)}</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={getClassificationColor(m.cvaiClass)}>{m.cvai?.toFixed(2)}%</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={getClassificationColor(m.tbcClass)}>{m.tbc?.toFixed(1)}</Badge></TableCell>
+                            <TableCell><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => handleEdit(m)}><Edit className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDelete(m.id_medida!)} className="hover:text-red-600"><Trash2 className="w-4 h-4" /></Button></div></TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </main>
