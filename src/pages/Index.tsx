@@ -4,6 +4,7 @@ import { BarChart, UserPlus, Ruler, List, UserCircle } from "lucide-react";
 
 // O logo precisa ser importado. Certifique-se que o caminho está correto.
 import logoImage from "/lovable-uploads/47f5ae1e-1be7-4cfa-a11b-981b39373714.png";
+import novoLogo from "@/assets/Logo Modificado.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const Index = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo e Título do Sistema */}
             <div className="flex items-center space-x-3">
-              <img src={logoImage} alt="Logo Simetrik Baby" className="h-8 w-auto" />
+              <img src={novoLogo} alt="Logo Simetrik Baby" className="h-8 w-auto" />
               <span className="text-xl font-semibold text-gray-800">Simetrik Baby</span>
             </div>
             {/* Ícone de Perfil do Usuário */}
