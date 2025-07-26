@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, UserPlus, Ruler, List, UserCircle } from "lucide-react";
 
-// O logo precisa ser importado. Certifique-se que o caminho está correto.
-import logoImage from "/lovable-uploads/47f5ae1e-1be7-4cfa-a11b-981b39373714.png";
+// Importação do novo logotipo.
+// Certifique-se de que o caminho relativo ou o alias ('@') está correto para a estrutura do seu projeto.
+import novoLogo from "@/assets/Logo Modificado.png";
 
 const Index = () => {
   const navigate = useNavigate();
 
-  // A lógica e os dados permanecem os mesmos.
+  // A estrutura de dados para os itens do menu permanece a mesma.
   const menuItems = [
     {
       title: "Dashboard",
@@ -42,15 +43,22 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 1. Barra de Navegação Superior (Header) */}
+      {/* 1. Barra de Navegação Superior (Header) com tamanhos ajustados */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo e Título do Sistema */}
-            <div className="flex items-center space-x-3">
-              <img src={logoImage} alt="Logo Simetrik Baby" className="h-8 w-auto" />
-              <span className="text-xl font-semibold text-gray-800">Simetrik Baby</span>
+            {/* Logo e Título do Sistema com maior destaque */}
+            <div className="flex items-center space-x-4"> {/* Espaçamento aumentado */}
+              <img
+                src={novoLogo}
+                alt="Logo Simetrik Baby"
+                className="h-10 w-auto" // Altura do logo aumentada para 40px
+              />
+              <span className="text-2xl font-semibold text-gray-800"> {/* Tamanho da fonte aumentado */}
+                Simetrik Baby
+              </span>
             </div>
+            
             {/* Ícone de Perfil do Usuário */}
             <div className="flex items-center">
               <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700">
@@ -71,7 +79,7 @@ const Index = () => {
           </p>
         </div>
 
-        {/* 3. Grid de Ações (Cards Refatorados) */}
+        {/* 3. Grid de Ações (Cards) */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {menuItems.map((item) => {
             const Icon = item.icon;
