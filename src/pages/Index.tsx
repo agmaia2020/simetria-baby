@@ -49,8 +49,8 @@ const Index = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo e Título do Sistema */}
             <div className="flex items-center space-x-3">
-              <img src={novoLogo} alt="Logo Simetrik Baby" className="h-8 w-auto" />
-              <span className="text-xl font-semibold text-gray-800">Simetrik Baby</span>
+              <img src={novoLogo} alt="Logo Simetrik Baby" className="h-15 w-auto" />
+              <span className="text-xl font-semibold text-gray-1000">Simetrik Baby</span>
             </div>
             {/* Ícone de Perfil do Usuário */}
             <div className="flex items-center">
