@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 // --- CORREÇÃO DEFINITIVA: Importação do logo com caminho relativo ---
 // Ajuste o caminho se a estrutura de pastas for diferente.
-import novoLogo from "../../assets/Logo Modificado.png";
+import novoLogo from "@/assets/Logo Modificado.png";
 
 // Suas interfaces, mantidas como estão
 interface PatientData { id_paciente: number; nome: string; data_nascimento: string; sexo: string; }
