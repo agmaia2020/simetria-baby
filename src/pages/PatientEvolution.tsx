@@ -116,6 +116,20 @@ const PatientEvolution = () => {
   };
 
   const chartData = measurements.map(m => ({ data: formatDate(m.data_medicao), CI: m.ci, CVAI: m.cvai }));
+
+  // --- DADOS PARA AS LEGENDAS ---
+  const ciLegend = [
+    { name: "Dolicocefalia (< 75)", color: "bg-blue-500" },
+    { name: "Normal (75-85)", color: "bg-green-500" },
+    { name: "Braquicefalia (> 85)", color: "bg-purple-500" },
+  ];
+
+  const cvaiLegend = [
+    { name: "Normal (< 3.5%)", color: "bg-green-500" },
+    { name: "Leve (3.5-6.25%)", color: "bg-yellow-500" },
+    { name: "Moderada (6.25-8.75%)", color: "bg-orange-500" },
+    { name: "Grave (> 8.75%)", color: "bg-red-500" },
+  ];
   // --- FIM DA SUA LÓGICA DE COMPONENTE ---
 
   return (
@@ -161,6 +175,15 @@ const PatientEvolution = () => {
                     <Area type="monotone" dataKey="CI" stroke="#1e40af" fill="#3b82f6" fillOpacity={0.3} strokeWidth={2} name="Índice Cefálico" />
                   </AreaChart>
                 </ResponsiveContainer>
+                {/* LEGENDA CUSTOMIZADA */}
+                <div className="flex justify-center items-center gap-4 mt-4 text-xs text-gray-600">
+                  {ciLegend.map(item => (
+                    <div key={item.name} className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-sm ${item.color} opacity-70`}></div>
+                      <span>{item.name}</span>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
             {/* Gráfico CVAI */}
@@ -180,6 +203,15 @@ const PatientEvolution = () => {
                     <Area type="monotone" dataKey="CVAI" stroke="#7c3aed" fill="#8b5cf6" fillOpacity={0.3} strokeWidth={2} name="CVAI" />
                   </AreaChart>
                 </ResponsiveContainer>
+                {/* LEGENDA CUSTOMIZADA */}
+                <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mt-4 text-xs text-gray-600">
+                  {cvaiLegend.map(item => (
+                    <div key={item.name} className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-sm ${item.color} opacity-70`}></div>
+                      <span>{item.name}</span>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>
