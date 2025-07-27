@@ -15,9 +15,8 @@ import { useMeasurements, Measurement } from "@/hooks/useMeasurements";
 import { UserCircle, ArrowLeft, Edit, Trash2, Save, X, TrendingUp, Info } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
-// --- CORREÇÃO DEFINITIVA: Importação do logo com caminho relativo ---
-// Ajuste o caminho se a estrutura de pastas for diferente.
-import novoLogo from "../../assets/Logo Modificado.png";
+// --- CORREÇÃO TEMPORÁRIA: Linha do logo comentada para evitar o erro 404 ---
+// import novoLogo from "../../assets/Logo Modificado.png";
 
 // Suas interfaces, mantidas como estão
 interface PatientData { id_paciente: number; nome: string; data_nascimento: string; sexo: string; }
@@ -78,7 +77,7 @@ const PatientEvolution = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4 cursor-pointer group" onClick={() => navigate('/')}>
-              <img src={novoLogo} alt="Logo Simetrik Baby" className="h-10 w-auto" />
+              {/* <img src={novoLogo} alt="Logo Simetrik Baby" className="h-10 w-auto" /> */}
               <span className="text-2xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Simetrik Baby</span>
             </div>
             <div className="flex items-center space-x-3">{user && user.name && (<span className="text-base font-medium text-gray-700 hidden sm:block">{user.name}</span>)}<button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"><UserCircle className="w-7 h-7" /></button></div>
