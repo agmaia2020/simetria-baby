@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList } from "recharts";
 
 interface RaceData {
   raca: string;
@@ -31,9 +31,11 @@ export const RaceChart = ({ data, chartConfig }: RaceChartProps) => {
                 textAnchor="end"
                 height={80}
               />
-              <YAxis fontSize={12} />
+              <YAxis fontSize={12} hide={true} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="count" fill="#3B82F6" />
+              <Bar dataKey="count" fill="#3B82F6">
+                <LabelList dataKey="count" position="top" fontSize={12} fill="#374151" />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>

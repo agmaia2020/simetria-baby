@@ -10,7 +10,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 // Imports para o novo layout consistente
-import { UserCircle, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { UserMenu } from "@/components/auth/UserMenu";
 import novoLogo from "@/assets/Logo Modificado.png";
 import { useAuth } from "@/hooks/useAuth"; // Seu hook de autenticação
 
@@ -70,15 +71,31 @@ const PatientRegistration = () => {
       toast.error("Todos os campos marcados com * são obrigatórios.");
       return;
     }
+    
+    // Verificar se o usuário está logado
+    if (!user || !user.id) {
+      toast.error("Usuário não autenticado. Faça login novamente.");
+      return;
+    }
+    
     setIsLoading(true);
     try {
       if (isEditing && editId) {
-        const { error } = await supabase.from('dpacientes').update({ ...formData, nome: formData.nome.trim() }).eq('id_paciente', parseInt(editId));
+        const { error } = await supabase.from('dpacientes').update({ 
+          ...formData, 
+          nome: formData.nome.trim(),
+          usuario_id: user.id 
+        }).eq('id_paciente', parseInt(editId));
         if (error) throw error;
         toast.success("Paciente atualizado com sucesso!");
         navigate("/lista-pacientes");
       } else {
-        const { data, error } = await supabase.from('dpacientes').insert({ ...formData, nome: formData.nome.trim(), ativo: true }).select().single();
+        const { data, error } = await supabase.from('dpacientes').insert({ 
+          ...formData, 
+          nome: formData.nome.trim(), 
+          ativo: true,
+          usuario_id: user.id 
+        }).select().single();
         if (error) throw error;
         toast.success("Paciente cadastrado com sucesso!");
         if (data && data.id_paciente) {
@@ -110,14 +127,7 @@ const PatientRegistration = () => {
               <img src={novoLogo} alt="Logo Simetrik Baby" className="h-10 w-auto" />
               <span className="text-2xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Simetrik Baby</span>
             </div>
-            <div className="flex items-center space-x-3">
-              {user && user.name && (
-                <span className="text-base font-medium text-gray-700 hidden sm:block">{user.name}</span>
-              )}
-              <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700">
-                <UserCircle className="w-7 h-7" />
-              </button>
-            </div>
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -181,9 +191,20 @@ const PatientRegistration = () => {
       </main>
 
       {/* 3. Rodapé Padrão */}
-      <footer className="mt-16 pb-8 text-center text-gray-500">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="mt-2 text-xs">&copy; {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+      <footer className="mt-16 pb-8 text-center text-gray-500 border-t border-gray-200">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
+            <a href="/termos-de-servico" className="hover:text-blue-600 transition-colors">Termos de Serviço</a>
+            <span className="hidden md:inline">•</span>
+            <a href="/politica-de-privacidade" className="hover:text-blue-600 transition-colors">Política de Privacidade</a>
+            <span className="hidden md:inline">•</span>
+            <a href="mailto:suporte@simetrikbaby.com" className="hover:text-blue-600 transition-colors">Suporte</a>
+          </div>
+          <div className="flex flex-col md:flex-row justify-center items-center gap-2 text-sm">
+            <p>© {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+            <span className="hidden md:inline">•</span>
+            <p>Versão 1.0.0</p>
+          </div>
         </div>
       </footer>
     </div>

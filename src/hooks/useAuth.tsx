@@ -73,6 +73,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           title: "Login realizado com sucesso!",
           description: "Bem-vindo de volta!",
         });
+        // Redireciona para o painel de controle (Index.tsx) após login bem-sucedido
+        window.location.href = '/home';
       }
       
       return { error };
@@ -133,6 +135,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           title: "Logout realizado",
           description: "Você foi desconectado com sucesso.",
         });
+        // Redirecionar para a tela de login após logout bem-sucedido
+        window.location.href = '/auth';
       }
     } catch (error) {
       console.error('Erro no logout:', error);

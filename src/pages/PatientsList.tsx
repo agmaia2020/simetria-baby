@@ -10,9 +10,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 // Imports para o novo layout consistente
-import { UserCircle, ArrowLeft, Search, Edit, Trash2, Plus, Ruler, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Search, Edit, Trash2, Plus, Ruler, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { UserMenu } from "@/components/auth/UserMenu";
 import novoLogo from "@/assets/Logo Modificado.png";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserFilter } from "@/hooks/useUserFilter";
 
 // Sua interface, mantida como está
 interface Patient {
@@ -30,6 +32,7 @@ const PatientsList = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { applyUserFilter, userFilterLoading, currentUserId } = useUserFilter();
   const [searchTerm, setSearchTerm] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,22 +41,37 @@ const PatientsList = () => {
   const specificPatientId = searchParams.get('paciente_id');
 
   useEffect(() => {
-    loadPatients();
-  }, [specificPatientId]);
+    if (!userFilterLoading) {
+      loadPatients();
+    }
+  }, [specificPatientId, userFilterLoading, currentUserId]);
 
   // Todas as suas funções (loadPatients, formatDate, calculateAge, etc.)
   // permanecem exatamente as mesmas. Nenhuma alteração foi feita nelas.
   const loadPatients = async () => {
     try {
       setLoading(true);
+      
+      // Verificar se currentUserId está disponível antes de prosseguir
+      if (!currentUserId) {
+        console.warn('currentUserId não está disponível ainda');
+        return;
+      }
+      
       let query = supabase.from('dpacientes').select('*').eq('ativo', true);
+      
+      // Aplicar filtro de usuário para permissões
+      query = applyUserFilter(query, currentUserId);
+      
       if (specificPatientId) {
         query = query.eq('id_paciente', parseInt(specificPatientId));
       }
+      
       const { data, error } = await query.order('data_cadastro', { ascending: false });
       if (error) throw error;
       setPatients(data || []);
     } catch (error) {
+      console.error('Erro ao carregar pacientes:', error);
       toast.error("Erro ao carregar pacientes");
     } finally {
       setLoading(false);
@@ -72,14 +90,29 @@ const PatientsList = () => {
   const calculateAge = (birthDateString: string) => {
     const birthDate = new Date(birthDateString);
     const today = new Date();
-    let ageYears = today.getFullYear() - birthDate.getFullYear();
-    let ageMonths = today.getMonth() - birthDate.getMonth();
-    if (ageMonths < 0 || (ageMonths === 0 && today.getDate() < birthDate.getDate())) {
-      ageYears--;
-      ageMonths = (ageMonths + 12) % 12;
+    
+    // Calcular diferença total em meses
+    let totalMonths = (today.getFullYear() - birthDate.getFullYear()) * 12 + (today.getMonth() - birthDate.getMonth());
+    
+    // Ajustar se o dia ainda não chegou no mês atual
+    if (today.getDate() < birthDate.getDate()) {
+      totalMonths--;
     }
-    if (ageYears > 0) return `${ageYears} ano(s)`;
-    return `${ageMonths} mes(es)`;
+    
+    // Calcular dias restantes
+    let days = today.getDate() - birthDate.getDate();
+    if (days < 0) {
+      // Pegar o último dia do mês anterior
+      const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += lastMonth.getDate();
+    }
+    
+    // Formatação da saída
+    if (totalMonths === 0) {
+      return `${days} dias`;
+    } else {
+      return `${totalMonths} meses e ${days} dias`;
+    }
   };
 
   const getSexBadgeColor = (sexo: string) => sexo === "masculino" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800";
@@ -108,7 +141,7 @@ const PatientsList = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4 cursor-pointer group" onClick={() => navigate('/')}><img src={novoLogo} alt="Logo Simetrik Baby" className="h-10 w-auto" /><span className="text-2xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Simetrik Baby</span></div>
-            <div className="flex items-center space-x-3">{user && user.name && (<span className="text-base font-medium text-gray-700 hidden sm:block">{user.name}</span>)}<button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"><UserCircle className="w-7 h-7" /></button></div>
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -118,7 +151,7 @@ const PatientsList = () => {
         {/* Cabeçalho da página com Título, Busca e Botão de Ação */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="Voltar"><ArrowLeft className="w-6 h-6 text-gray-700" /></button>
+            <button onClick={() => navigate('/')} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="Voltar"><ArrowLeft className="w-6 h-6 text-gray-700" /></button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Lista de Pacientes</h1>
               <p className="mt-1 text-lg text-gray-600">Gerencie, edite e visualize os pacientes cadastrados.</p>
@@ -135,12 +168,13 @@ const PatientsList = () => {
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Idade</TableHead><TableHead>Sexo</TableHead><TableHead>Raça/Cor</TableHead><TableHead>Data Cadastro</TableHead><TableHead className="text-center">Ações</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Data de Nascimento</TableHead><TableHead>Idade</TableHead><TableHead>Sexo</TableHead><TableHead>Raça/Cor</TableHead><TableHead>Data Cadastro</TableHead><TableHead className="text-center">Ações</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {loading ? (<TableRow><TableCell colSpan={6} className="text-center py-12">Carregando pacientes...</TableCell></TableRow>) : currentPatients.length === 0 ? (<TableRow><TableCell colSpan={6} className="text-center py-12">{searchTerm ? "Nenhum paciente encontrado." : "Nenhum paciente cadastrado."}</TableCell></TableRow>) : (
+                  {loading ? (<TableRow><TableCell colSpan={7} className="text-center py-12">Carregando pacientes...</TableCell></TableRow>) : currentPatients.length === 0 ? (<TableRow><TableCell colSpan={7} className="text-center py-12">{searchTerm ? "Nenhum paciente encontrado." : "Nenhum paciente cadastrado."}</TableCell></TableRow>) : (
                     currentPatients.map((patient) => (
                       <TableRow key={patient.id_paciente} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{patient.nome}</TableCell>
+                        <TableCell>{formatDate(patient.data_nascimento)}</TableCell>
                         <TableCell>{calculateAge(patient.data_nascimento)}</TableCell>
                         <TableCell><Badge variant="outline" className={getSexBadgeColor(patient.sexo)}>{patient.sexo.charAt(0).toUpperCase()}</Badge></TableCell>
                         <TableCell className="capitalize">{patient.raca}</TableCell>
@@ -176,8 +210,21 @@ const PatientsList = () => {
       </main>
 
       {/* 3. Rodapé Padrão */}
-      <footer className="mt-16 pb-8 text-center text-gray-500">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8"><p className="mt-2 text-xs">&copy; {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p></div>
+      <footer className="mt-16 pb-8 text-center text-gray-500 border-t border-gray-200">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
+            <a href="/termos-de-servico" className="hover:text-blue-600 transition-colors">Termos de Serviço</a>
+            <span className="hidden md:inline">•</span>
+            <a href="/politica-de-privacidade" className="hover:text-blue-600 transition-colors">Política de Privacidade</a>
+            <span className="hidden md:inline">•</span>
+            <a href="mailto:suporte@simetrikbaby.com" className="hover:text-blue-600 transition-colors">Suporte</a>
+          </div>
+          <div className="flex flex-col md:flex-row justify-center items-center gap-2 text-sm">
+            <p>© {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+            <span className="hidden md:inline">•</span>
+            <p>Versão 1.0.0</p>
+          </div>
+        </div>
       </footer>
     </div>
   );

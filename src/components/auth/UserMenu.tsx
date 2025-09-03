@@ -1,5 +1,6 @@
 
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +14,7 @@ import { User, LogOut } from 'lucide-react';
 
 export const UserMenu = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   if (!user) {
     return null;
@@ -31,7 +33,7 @@ export const UserMenu = () => {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => window.location.href = '/perfil'}>
+        <DropdownMenuItem onClick={() => navigate('/perfil')}>
           <User className="mr-2 h-4 w-4" />
           Perfil
         </DropdownMenuItem>

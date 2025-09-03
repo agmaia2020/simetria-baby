@@ -6,7 +6,8 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 
 // Imports necessários para o novo layout e navegação
 import { useNavigate } from "react-router-dom";
-import { UserCircle, ArrowLeft } from "lucide-react"; // Adicionado ícone ArrowLeft
+import { ArrowLeft } from "lucide-react"; // Adicionado ícone ArrowLeft
+import { UserMenu } from "@/components/auth/UserMenu";
 import novoLogo from "@/assets/Logo Modificado.png";
 
 // Importando seu hook de autenticação (caminho hipotético)
@@ -43,16 +44,7 @@ const Dashboard = () => {
             </div>
             
             {/* Exibição do nome do usuário (agora funcionando) */}
-            <div className="flex items-center space-x-3">
-              {user && user.name && (
-                <span className="text-base font-medium text-gray-700 hidden sm:block">
-                  {user.name}
-                </span>
-              )}
-              <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700">
-                <UserCircle className="w-7 h-7" />
-              </button>
-            </div>
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -95,10 +87,21 @@ const Dashboard = () => {
       </main>
 
       {/* 3. Rodapé Padrão */}
-      <footer className="mt-16 pb-8 text-center text-gray-500">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-              <p className="mt-2 text-xs">&copy; {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+      <footer className="mt-16 pb-8 text-center text-gray-500 border-t border-gray-200">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
+            <a href="/termos-de-servico" className="hover:text-blue-600 transition-colors">Termos de Serviço</a>
+            <span className="hidden md:inline">•</span>
+            <a href="/politica-de-privacidade" className="hover:text-blue-600 transition-colors">Política de Privacidade</a>
+            <span className="hidden md:inline">•</span>
+            <a href="mailto:suporte@simetrikbaby.com" className="hover:text-blue-600 transition-colors">Suporte</a>
           </div>
+          <div className="flex flex-col md:flex-row justify-center items-center gap-2 text-sm">
+            <p>© {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+            <span className="hidden md:inline">•</span>
+            <p>Versão 1.0.0</p>
+          </div>
+        </div>
       </footer>
     </div>
   );

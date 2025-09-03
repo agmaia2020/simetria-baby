@@ -15,9 +15,11 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMeasurements } from "@/hooks/useMeasurements";
+import { useUserFilter } from "@/hooks/useUserFilter";
 
 // Imports para o novo layout consistente
-import { UserCircle, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { UserMenu } from "@/components/auth/UserMenu";
 import novoLogo from "@/assets/Logo Modificado.png";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -42,12 +44,16 @@ const MeasurementsRegistration = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { loading: userFilterLoading, currentUserId, applyUserFilter } = useUserFilter();
   const pacienteId = searchParams.get("paciente_id");
   const { createMeasurement, loading: savingMeasurement } = useMeasurements();
 
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
   const [loadingPatient, setLoadingPatient] = useState(false);
   const [availablePatients, setAvailablePatients] = useState<PatientInfo[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [measurements, setMeasurements] = useState({
     dataCadastro: new Date().toISOString().split("T")[0],
     pc: "", ap: "", bp: "", pd: "", pe: "", td: "", te: "",
@@ -57,18 +63,48 @@ const MeasurementsRegistration = () => {
   });
 
   useEffect(() => {
-    loadAvailablePatients();
-    if (pacienteId) {
-      loadPatientData();
+    if (!userFilterLoading && currentUserId) {
+      loadAvailablePatients();
+      if (pacienteId) {
+        loadPatientData();
+      }
     }
-  }, [pacienteId]);
+  }, [pacienteId, userFilterLoading, currentUserId]);
+
+  // Efeito para pré-selecionar paciente quando vindo da URL
+  useEffect(() => {
+    if (patientInfo && !searchTerm) {
+      setSearchTerm(patientInfo.nome);
+    }
+  }, [patientInfo]);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.patient-search-container')) {
+        setShowDropdown(false);
+        setSelectedIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Todas as suas funções (loadAvailablePatients, loadPatientData, etc.)
   // permanecem exatamente as mesmas. Nenhuma alteração foi feita nelas.
   const loadAvailablePatients = async () => {
+    if (!currentUserId) return;
+    
     try {
       setLoadingPatient(true);
-      const { data, error } = await supabase.from("dpacientes").select("id_paciente, nome, data_nascimento, sexo").eq("ativo", true).order("nome");
+      let query = supabase.from("dpacientes").select("id_paciente, nome, data_nascimento, sexo").eq("ativo", true);
+      
+      // Aplicar filtro de usuário baseado em permissões
+      query = applyUserFilter(query, currentUserId);
+      
+      const { data, error } = await query.order("nome");
       if (error) throw error;
       const patientsWithFormattedDate = data?.map((p) => ({ ...p, data_nascimento: new Date(p.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR"), sexo: p.sexo === "masculino" ? "Masculino" : "Feminino" })) || [];
       setAvailablePatients(patientsWithFormattedDate);
@@ -80,11 +116,16 @@ const MeasurementsRegistration = () => {
   };
 
   const loadPatientData = async () => {
-    if (!pacienteId) return;
+    if (!pacienteId || !currentUserId) return;
     try {
       setLoadingPatient(true);
-      const { data, error } = await supabase.from("dpacientes").select("id_paciente, nome, data_nascimento, sexo").eq("id_paciente", parseInt(pacienteId)).eq("ativo", true).single();
-      if (error) { toast.error("Paciente não encontrado"); return; }
+      let query = supabase.from("dpacientes").select("id_paciente, nome, data_nascimento, sexo").eq("id_paciente", parseInt(pacienteId)).eq("ativo", true);
+      
+      // Aplicar filtro de usuário baseado em permissões
+      query = applyUserFilter(query, currentUserId);
+      
+      const { data, error } = await query.single();
+      if (error) { toast.error("Paciente não encontrado ou sem permissão de acesso"); return; }
       if (data) {
         const birthDate = new Date(data.data_nascimento + "T00:00:00");
         setPatientInfo({ id_paciente: data.id_paciente, nome: data.nome, data_nascimento: birthDate.toLocaleDateString("pt-BR"), sexo: data.sexo === "masculino" ? "Masculino" : "Feminino" });
@@ -96,9 +137,51 @@ const MeasurementsRegistration = () => {
     }
   };
 
-  const selectPatient = (patientId: string) => {
-    const patient = availablePatients.find((p) => p.id_paciente.toString() === patientId);
-    if (patient) setPatientInfo(patient);
+  const selectPatient = (patient: PatientInfo) => {
+    setPatientInfo(patient);
+    setSearchTerm(patient.nome); // Mostra o nome do paciente no campo de busca
+    setShowDropdown(false);
+    setSelectedIndex(-1);
+  };
+
+  const filteredPatients = availablePatients.filter(patient =>
+    patient.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setShowDropdown(value.length > 0);
+    setSelectedIndex(-1);
+    if (value === "") {
+      setPatientInfo(null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showDropdown) return;
+    
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedIndex(prev => 
+          prev < filteredPatients.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (selectedIndex >= 0 && filteredPatients[selectedIndex]) {
+          selectPatient(filteredPatients[selectedIndex]);
+        }
+        break;
+      case "Escape":
+        setShowDropdown(false);
+        setSelectedIndex(-1);
+        break;
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -163,10 +246,7 @@ const MeasurementsRegistration = () => {
               <img src={novoLogo} alt="Logo Simetrik Baby" className="h-10 w-auto" />
               <span className="text-2xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Simetrik Baby</span>
             </div>
-            <div className="flex items-center space-x-3">
-              {user && user.name && (<span className="text-base font-medium text-gray-700 hidden sm:block">{user.name}</span>)}
-              <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"><UserCircle className="w-7 h-7" /></button>
-            </div>
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -192,23 +272,51 @@ const MeasurementsRegistration = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* SELETOR DE PACIENTE SIMPLIFICADO */}
+                {/* SELETOR DE PACIENTE COM BUSCA */}
                 <div className="space-y-2 p-4 bg-gray-50 rounded-lg border">
-                  <Label htmlFor="patient-select" className="font-semibold">Paciente *</Label>
-                  <Select value={patientInfo?.id_paciente.toString() || ""} onValueChange={selectPatient}>
-                    <SelectTrigger id="patient-select">
-                      <SelectValue placeholder="Busque ou selecione um paciente..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availablePatients.map((p) => (
-                        <SelectItem key={p.id_paciente} value={p.id_paciente.toString()}>
-                          {p.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="patient-search" className="font-semibold">Paciente *</Label>
+                  <div className="relative patient-search-container">
+                    <Input
+                      id="patient-search"
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onFocus={() => setShowDropdown(searchTerm.length > 0)}
+                      placeholder="Digite para buscar um paciente..."
+                      className="w-full"
+                    />
+                    {showDropdown && filteredPatients.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {filteredPatients.map((patient, index) => (
+                          <div
+                            key={patient.id_paciente}
+                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${
+                              index === selectedIndex ? 'bg-blue-100' : ''
+                            }`}
+                            onClick={() => selectPatient(patient)}
+                            onMouseEnter={() => setSelectedIndex(index)}
+                          >
+                            <div className="font-medium">{patient.nome}</div>
+                            <div className="text-sm text-gray-500">
+                              {patient.sexo} • Nascimento: {patient.data_nascimento}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {showDropdown && filteredPatients.length === 0 && searchTerm.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                        <div className="px-4 py-2 text-gray-500 text-center">
+                          Nenhum paciente encontrado
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   {loadingPatient && <p className="text-sm text-gray-500 mt-1">Carregando pacientes...</p>}
                 </div>
+
+
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2"><Label htmlFor="dataCadastro">Data da Medição</Label><Input id="dataCadastro" type="date" value={measurements.dataCadastro} onChange={(e) => handleInputChange("dataCadastro", e.target.value)} max={new Date().toISOString().split("T")[0]} required /></div>
@@ -265,8 +373,21 @@ const MeasurementsRegistration = () => {
       </main>
 
       {/* 3. Rodapé Padrão */}
-      <footer className="mt-16 pb-8 text-center text-gray-500">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8"><p className="mt-2 text-xs">&copy; {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p></div>
+      <footer className="mt-16 pb-8 text-center text-gray-500 border-t border-gray-200">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
+            <a href="/termos-de-servico" className="hover:text-blue-600 transition-colors">Termos de Serviço</a>
+            <span className="hidden md:inline">•</span>
+            <a href="/politica-de-privacidade" className="hover:text-blue-600 transition-colors">Política de Privacidade</a>
+            <span className="hidden md:inline">•</span>
+            <a href="mailto:suporte@simetrikbaby.com" className="hover:text-blue-600 transition-colors">Suporte</a>
+          </div>
+          <div className="flex flex-col md:flex-row justify-center items-center gap-2 text-sm">
+            <p>© {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+            <span className="hidden md:inline">•</span>
+            <p>Versão 1.0.0</p>
+          </div>
+        </div>
       </footer>
     </div>
   );

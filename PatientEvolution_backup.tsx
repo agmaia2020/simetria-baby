@@ -10,20 +10,28 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useMeasurements, Measurement } from "@/hooks/useMeasurements";
 import { usePatients } from "@/hooks/usePatients";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-import { useUserFilter } from "@/hooks/useUserFilter";
 
 // Imports de layout e ícones
-import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp } from "lucide-react";
-import { UserMenu } from "@/components/auth/UserMenu";
+import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, ChevronUp, ChevronDown } from "lucide-react";
+import { UserDropdown } from "@/components/UserDropdown";
 import novoLogo from "@/assets/Logo Modificado.png";
+import { getFormattedAge } from "@/utils/ageCalculator";
+import { formatDateToBR } from "@/utils/dateFormatter";
 import { useAuth } from "@/hooks/useAuth";
 
 // --- Componentes de Análise (Tooltip e Storytelling) ---
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ value: number; name: string }>;
+  payload?: Array<{
+    value: number;
+    name: string;
+    color: string;
+  }>;
   label?: string;
-  data: Array<{ data: string; [key: string]: number | string; classification: string }>;
+  data: Array<{
+    data: string;
+    [key: string]: string | number;
+  }>;
   dataKey: string;
   unit: string;
 }
@@ -55,8 +63,11 @@ const CustomTooltip = ({ active, payload, label, data, dataKey, unit }: CustomTo
 };
 
 interface AnalysisSummaryProps {
-  measurements: Array<{ data: string; [key: string]: number | string; classification: string }>;
-  dataKey: 'CI' | 'CVAI';
+  measurements: Array<{
+    data: string;
+    [key: string]: string | number;
+  }>;
+  dataKey: string;
   unit: string;
   name: string;
 }
@@ -68,15 +79,22 @@ const AnalysisSummary = ({ measurements, dataKey, unit, name }: AnalysisSummaryP
   const lastValue = lastMeasurement[dataKey];
   const lastClassification = lastMeasurement.classification;
 
-  // Verificar se lastValue é válido antes de usar toFixed
-  if (lastValue === null || lastValue === undefined || isNaN(Number(lastValue))) {
-    return null;
+  // Validação de segurança para valores nulos
+  if (lastValue === null || lastValue === undefined || !lastClassification) {
+    return (
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <p className="text-sm text-gray-700">
+          <strong className="text-gray-900">Dados insuficientes para análise.</strong>
+          {" Os valores necessários não estão disponíveis para esta medição."}
+        </p>
+      </div>
+    );
   }
 
   const part1 = `A medição mais recente, em `;
   const dateText = `${lastMeasurement.data}`;
   const part2 = `, registrou um ${name} de `;
-  const valueText = `${Number(lastValue).toFixed(2)}${unit}`;
+  const valueText = `${lastValue.toFixed(2)}${unit}`;
   const part3 = `, classificado como `;
   const classificationText = `${lastClassification}.`;
 
@@ -86,9 +104,9 @@ const AnalysisSummary = ({ measurements, dataKey, unit, name }: AnalysisSummaryP
     const previousMeasurement = measurements[measurements.length - 2];
     const previousValue = previousMeasurement[dataKey];
     
-    // Verificar se previousValue é válido antes de calcular variação
-    if (previousValue !== null && previousValue !== undefined && !isNaN(Number(previousValue))) {
-      const variation = Number(lastValue) - Number(previousValue);
+    // Validação de segurança para o valor anterior
+    if (previousValue !== null && previousValue !== undefined) {
+      const variation = lastValue - previousValue;
       const trend = variation > 0 ? "um aumento" : "uma redução";
       
       if (Math.abs(variation) < 0.01) {
@@ -105,6 +123,10 @@ const AnalysisSummary = ({ measurements, dataKey, unit, name }: AnalysisSummaryP
           </span>
         );
       }
+    } else {
+      variationElement = (
+        <span> Não foi possível calcular a variação devido a dados insuficientes na medição anterior.</span>
+      );
     }
   }
 
@@ -136,7 +158,6 @@ const PatientEvolution = () => {
   const { isAdmin, loading: adminLoading } = useAdminCheck();
   const { getMeasurementsByPatientId, updateMeasurement, deleteMeasurement, loading: measurementsLoading } = useMeasurements();
   const { getPatientById, loading: patientLoading } = usePatients();
-  const { loading: userFilterLoading, currentUserId, applyUserFilter } = useUserFilter();
 
   const pacienteId = searchParams.get("paciente_id");
 
@@ -144,7 +165,10 @@ const PatientEvolution = () => {
   const [measurements, setMeasurements] = useState<MeasurementDisplay[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingData, setEditingData] = useState<Partial<MeasurementDisplay>>({});
-  const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // Estados para ordenação da tabela
+  const [sortField, setSortField] = useState<string>('data_medicao');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const getClassification = useCallback((value: number | null, type: 'ci' | 'cvai' | 'tbc'): string => {
     if (value === null) return "-";
@@ -176,213 +200,172 @@ const PatientEvolution = () => {
   }, [getClassification]);
 
   useEffect(() => {
-    if (!pacienteId || adminLoading || userFilterLoading || !user || !currentUserId || dataLoaded) return;
+    if (!pacienteId || adminLoading || !user) return;
 
     const loadPageData = async () => {
       const id = parseInt(pacienteId);
       try {
-        console.log('Carregando dados para paciente ID:', id, 'usuário:', user.id, 'isAdmin:', isAdmin);
-        
-        // Carregar dados do paciente com filtro de usuário
-        const patientData = await getPatientById(id);
-        
+        const [patientData, measurementData] = await Promise.all([
+          getPatientById(id, isAdmin, user.id),
+          getMeasurementsByPatientId(id)
+        ]);
+
         if (!patientData) {
-          console.error('Paciente não encontrado');
-          toast.error("Paciente não encontrado");
+          toast.error("Paciente não encontrado ou sem permissão de acesso");
           navigate("/lista-pacientes");
           return;
         }
 
-        // Verificar se o usuário tem permissão para ver este paciente
-        if (!isAdmin && patientData.usuario_id !== user.id) {
-          console.error('Usuário sem permissão para ver este paciente');
-          toast.error("Sem permissão para acessar este paciente");
-          navigate("/lista-pacientes");
-          return;
-        }
-
-        console.log('Dados do paciente carregados:', patientData);
         setPatientInfo({ 
           id_paciente: patientData.id_paciente, 
           nome: patientData.nome, 
-          data_nascimento: new Date(patientData.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR'), 
+          data_nascimento: patientData.data_nascimento, 
+          data_nascimento_formatada: formatDateToBR(patientData.data_nascimento), 
           sexo: patientData.sexo === 'masculino' ? 'Masculino' : 'Feminino' 
         });
 
-        // Carregar medidas do paciente
-        const measurementData = await getMeasurementsByPatientId(id, isAdmin, user.id);
-        console.log('Medidas carregadas:', measurementData.length);
-        
-        const classifiedData = (measurementData || [])
-          .map(m => ({ ...m, ...calculateIndices(m) }))
-          .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime());
+        const classifiedData = measurementData.map(m => ({ ...m, ...calculateIndices(m) }));
         setMeasurements(classifiedData);
-        setDataLoaded(true);
 
       } catch (error) {
-        console.error('Erro ao carregar dados da página:', error);
         toast.error("Ocorreu um erro ao carregar os dados da página.");
+        console.error(error);
       }
     };
 
     loadPageData();
-  }, [pacienteId, adminLoading, userFilterLoading, user, currentUserId, isAdmin, dataLoaded]);
+  }, [pacienteId, adminLoading, user, isAdmin, getPatientById, getMeasurementsByPatientId, navigate, calculateIndices]);
 
-  // Reset dataLoaded when pacienteId changes
-  useEffect(() => {
-    setDataLoaded(false);
-    setPatientInfo(null);
-    setMeasurements([]);
-  }, [pacienteId]);
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-  const getClassificationColor = (classification: string) => {
-    switch (classification.toLowerCase()) {
-      case "normal": return "text-green-600 bg-green-50 border-green-200";
-      case "leve": return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      case "moderada": case "moderado": return "text-orange-600 bg-orange-50 border-orange-200";
-      case "grave": case "severa": case "severo": return "text-red-600 bg-red-50 border-red-200";
-      case "dolicocefalia": case "dolicocefalia leve": case "dolicocefalia moderada": return "text-blue-600 bg-blue-50 border-blue-200";
-      case "braquicefalia": case "braquicefalia leve": case "braquicefalia moderada": case "braquicefalia severa": return "text-purple-600 bg-purple-50 border-purple-200";
-      default: return "text-gray-600 bg-gray-50 border-gray-200";
-    }
-  };
   
-  const handleEdit = (m: MeasurementDisplay) => { 
-    setEditingId(m.id_medida!); 
-    // Formatar a data para o input type="date" (YYYY-MM-DD)
-    const formattedData = {
-      ...m,
-      data_medicao: m.data_medicao ? new Date(m.data_medicao).toISOString().split('T')[0] : ''
-    };
-    setEditingData(formattedData); 
-  };
+
   
-  const handleCancelEdit = () => { 
-    setEditingId(null); 
-    setEditingData({}); 
-    setValidationErrors({});
-  };
-  
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
-  const validateField = (field: keyof Measurement, value: string | number | null): string | null => {
-    if (field === 'data_medicao') {
-      if (!value) return "Data é obrigatória";
-      const date = new Date(value);
-      if (isNaN(date.getTime())) return "Data inválida";
-      if (date > new Date()) return "Data não pode ser futura";
-      return null;
-    }
+  const getSeverityBadgeClass = (classification: string): string => {
+    const lowerCaseClass = classification.toLowerCase();
     
-    if (typeof value === 'number') {
-      if (value < 0) return "Valor não pode ser negativo";
-      if (value > 1000) return "Valor muito alto";
+    if (lowerCaseClass.includes("normal")) {
+      return "bg-green-500/60 border-green-500/80 text-white";
     }
-    
-    return null;
+    if (lowerCaseClass.includes("leve")) {
+      return "bg-yellow-500/60 border-yellow-500/80 text-yellow-900";
+    }
+    if (lowerCaseClass.includes("moderada")) {
+      return "bg-orange-500/60 border-orange-500/80 text-white";
+    }
+    if (lowerCaseClass.includes("severa") || lowerCaseClass.includes("grave")) {
+      return "bg-red-500/60 border-red-500/80 text-white";
+    }
+    // Cor padrão para casos inesperados
+    return "bg-gray-200 text-gray-800";
   };
   
+  const handleEdit = (m: MeasurementDisplay) => { setEditingId(m.id_medida!); setEditingData(m); };
+  const handleCancelEdit = () => { setEditingId(null); setEditingData({}); };
   const handleInputChange = (field: keyof Measurement, value: string) => {
     let processedValue: string | number | null;
     
     if (field === 'data_medicao') {
-      // Para campo de data, manter como string no formato YYYY-MM-DD
+      // Para data, manter como string
       processedValue = value;
     } else {
-      // Para campos numéricos, converter para número ou null
+      // Para campos numéricos, converter para número
       processedValue = value === "" ? null : parseFloat(value);
-      
-      // Validação básica para campos numéricos
-      if (processedValue !== null && (isNaN(processedValue) || processedValue < 0)) {
-        setValidationErrors(prev => ({ ...prev, [field]: "Valor inválido" }));
-        return; // Não atualizar se valor inválido
-      }
     }
-    
-    // Validar o campo
-    const error = validateField(field, processedValue);
-    setValidationErrors(prev => {
-      const newErrors = { ...prev };
-      if (error) {
-        newErrors[field] = error;
-      } else {
-        delete newErrors[field];
-      }
-      return newErrors;
-    });
     
     const updated = { ...editingData, [field]: processedValue };
     setEditingData({ ...updated, ...calculateIndices(updated) });
   };
 
-  // Função para filtrar apenas os campos válidos do banco de dados
-  const filterDatabaseFields = (data: Partial<MeasurementDisplay>) => {
-    const {
-      ciClass, cvaiClass, tbcClass, // Remover campos calculados
-      ...validFields
-    } = data;
-    return validFields;
-  };
-
   const handleSaveEdit = async () => {
     if (!editingId || !user) return;
     
-    // Verificar se há erros de validação
-    if (Object.keys(validationErrors).length > 0) {
-      toast.error("Corrija os erros antes de salvar");
-      return;
-    }
-    
-    // Validações básicas
-    if (!editingData.data_medicao) {
-      toast.error("Data da medição é obrigatória");
-      return;
-    }
-    
-    // Preparar dados para salvar
+    // Calcular os índices para obter os valores atualizados
     const calculatedData = { ...editingData, ...calculateIndices(editingData) };
     
-    // Garantir que a data esteja no formato correto para o banco (ISO string)
-    if (calculatedData.data_medicao && typeof calculatedData.data_medicao === 'string') {
-      // Se a data está no formato YYYY-MM-DD, converter para ISO string
-      if (calculatedData.data_medicao.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        calculatedData.data_medicao = new Date(calculatedData.data_medicao + 'T00:00:00.000Z').toISOString();
-      }
-    }
+    // Filtrar apenas os campos válidos da tabela fmedidas
+    const validFields = {
+      ...(calculatedData.data_medicao !== undefined && { data_medicao: calculatedData.data_medicao }),
+      ...(calculatedData.pc !== undefined && { pc: calculatedData.pc }),
+      ...(calculatedData.ap !== undefined && { ap: calculatedData.ap }),
+      ...(calculatedData.bp !== undefined && { bp: calculatedData.bp }),
+      ...(calculatedData.pd !== undefined && { pd: calculatedData.pd }),
+      ...(calculatedData.pe !== undefined && { pe: calculatedData.pe }),
+      ...(calculatedData.td !== undefined && { td: calculatedData.td }),
+      ...(calculatedData.te !== undefined && { te: calculatedData.te }),
+      ...(calculatedData.ci !== undefined && { ci: calculatedData.ci }),
+      ...(calculatedData.cvai !== undefined && { cvai: calculatedData.cvai }),
+      ...(calculatedData.tbc !== undefined && { tbc: calculatedData.tbc })
+    };
     
-    // Filtrar apenas os campos que existem na tabela do banco
-    const filteredData = filterDatabaseFields(calculatedData);
+    console.log('🔄 Dados filtrados para atualização:', validFields);
     
-    const success = await updateMeasurement(editingId, filteredData, isAdmin, user.id);
+    const success = await updateMeasurement(editingId, validFields);
     if (success) {
       handleCancelEdit();
-      toast.success("Medida atualizada com sucesso!");
-      const updatedList = await getMeasurementsByPatientId(parseInt(pacienteId!), isAdmin, user.id);
-      setMeasurements((updatedList || [])
-        .map(m => ({...m, ...calculateIndices(m)}))
-        .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime()));
-    } else {
-      toast.error("Erro ao atualizar medida. Tente novamente.");
+      toast.success("Medida atualizada!");
+      const updatedList = await getMeasurementsByPatientId(parseInt(pacienteId!));
+      setMeasurements(updatedList.map(m => ({...m, ...calculateIndices(m)})));
     }
   };
   
   const handleDelete = async (id: number) => {
-    if (window.confirm("Deseja realmente excluir esta medida? Esta ação não pode ser desfeita.") && user) {
-      const ok = await deleteMeasurement(id, isAdmin, user.id);
+    if (window.confirm("Tem certeza?") && user) {
+      const ok = await deleteMeasurement(id);
       if (ok) {
-        toast.success("Medida excluída com sucesso!");
+        toast.success("Medida excluída!");
         setMeasurements(prev => prev.filter(m => m.id_medida !== id));
       }
     }
   };
 
-  const chartData = (measurements || [])
-    .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime())
-    .map(m => ({ data: formatDate(m.data_medicao), CI: m.ci, classification: m.ciClass }));
-  const cvaiChartData = (measurements || [])
-    .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime())
-    .map(m => ({ data: formatDate(m.data_medicao), CVAI: m.cvai, classification: m.cvaiClass }));
+  // Função para ordenação da tabela
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Função para formatar valores com uma casa decimal
+  const formatDecimal = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return '-';
+    return value.toFixed(1);
+  };
+
+  // Ordenar measurements baseado no campo e direção selecionados
+  const sortedMeasurements = [...measurements].sort((a, b) => {
+    let aValue = a[sortField as keyof MeasurementDisplay];
+    let bValue = b[sortField as keyof MeasurementDisplay];
+
+    // Tratamento para valores nulos - colocar no final
+    if (aValue === null || aValue === undefined) return 1;
+    if (bValue === null || bValue === undefined) return -1;
+
+    // Tratamento especial para data
+    if (sortField === 'data_medicao') {
+      const dateA = new Date(aValue as string).getTime();
+      const dateB = new Date(bValue as string).getTime();
+      return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+    }
+
+    // Tratamento para valores numéricos
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+
+    // Tratamento para strings
+    const stringA = String(aValue).toLowerCase();
+    const stringB = String(bValue).toLowerCase();
+    
+    if (stringA < stringB) return sortDirection === 'asc' ? -1 : 1;
+    if (stringA > stringB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const chartData = measurements.map(m => ({ data: formatDateToBR(m.data_medicao), CI: m.ci, classification: m.ciClass }));
+  const cvaiChartData = measurements.map(m => ({ data: formatDateToBR(m.data_medicao), CVAI: m.cvai, classification: m.cvaiClass }));
   
   // Este array continua sendo a fonte para as cores das ReferenceArea
   const ciReferenceData = [
@@ -408,7 +391,7 @@ const PatientEvolution = () => {
     { name: "Moderada (6.25-8.75%)", color: "bg-orange-500/60", hex: "#f97316" },
     { name: "Grave (> 8.75%)", color: "bg-red-500/60", hex: "#ef4444" },
   ];
-  const isLoading = adminLoading || patientLoading || measurementsLoading || userFilterLoading;
+  const isLoading = adminLoading || patientLoading || measurementsLoading;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -419,7 +402,7 @@ const PatientEvolution = () => {
               <img src={novoLogo} alt="Logo Simetrik Baby" className="h-10 w-auto" />
               <span className="text-2xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Simetrik Baby</span>
             </div>
-            <UserMenu />
+            <UserDropdown className="flex items-center" />
           </div>
         </div>
       </header>
@@ -431,7 +414,12 @@ const PatientEvolution = () => {
           </button>
           {isLoading && !patientInfo ? (<div className="text-lg text-gray-500">Carregando paciente...</div>) : patientInfo ? (
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{patientInfo.nome}</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {patientInfo.nome}
+                <span className="text-xl font-medium text-gray-600 ml-3">
+                  ({getFormattedAge(patientInfo.data_nascimento)})
+                </span>
+              </h1>
               <p className="mt-1 text-lg text-gray-600">Evolução das medidas cranianas</p>
             </div>
           ) : !isLoading && !patientInfo ? (<div className="text-lg text-red-500">Paciente não encontrado.</div>) : null}
@@ -536,48 +524,110 @@ const PatientEvolution = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Data</TableHead><TableHead>PC</TableHead><TableHead>AP</TableHead><TableHead>BP</TableHead><TableHead>PD</TableHead><TableHead>PE</TableHead><TableHead>TD</TableHead><TableHead>TE</TableHead>
-                    <TableHead>CI</TableHead><TableHead>CVAI</TableHead><TableHead>TBC</TableHead><TableHead>Ações</TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('data_medicao')}>
+                      <div className="flex items-center gap-1">
+                        Data
+                        {sortField === 'data_medicao' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('pc')}>
+                      <div className="flex items-center gap-1">
+                        PC
+                        {sortField === 'pc' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('ap')}>
+                      <div className="flex items-center gap-1">
+                        AP
+                        {sortField === 'ap' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('bp')}>
+                      <div className="flex items-center gap-1">
+                        BP
+                        {sortField === 'bp' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('pd')}>
+                      <div className="flex items-center gap-1">
+                        PD
+                        {sortField === 'pd' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('pe')}>
+                      <div className="flex items-center gap-1">
+                        PE
+                        {sortField === 'pe' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('td')}>
+                      <div className="flex items-center gap-1">
+                        TD
+                        {sortField === 'td' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('te')}>
+                      <div className="flex items-center gap-1">
+                        TE
+                        {sortField === 'te' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('ci')}>
+                      <div className="flex items-center gap-1">
+                        CI
+                        {sortField === 'ci' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('cvai')}>
+                      <div className="flex items-center gap-1">
+                        CVAI
+                        {sortField === 'cvai' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('tbc')}>
+                      <div className="flex items-center gap-1">
+                        TBC
+                        {sortField === 'tbc' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow><TableCell colSpan={12} className="text-center h-24">Carregando medidas...</TableCell></TableRow>
-                  ) : !measurements || measurements.length === 0 ? (
+                  ) : sortedMeasurements.length === 0 ? (
                     <TableRow><TableCell colSpan={12} className="text-center h-24 text-gray-500">Nenhuma medida encontrada para este paciente.</TableCell></TableRow>
                   ) : (
-                    measurements.map((m) => (
+                    sortedMeasurements.map((m) => (
                       <TableRow key={m.id_medida}>
                         {editingId === m.id_medida ? (
                           <>
-                            <TableCell>
-                              <div className="space-y-1">
-                                <Input 
-                                  type="date" 
-                                  value={editingData.data_medicao || ""} 
-                                  onChange={(e) => handleInputChange("data_medicao", e.target.value)} 
-                                  className={`w-36 ${validationErrors.data_medicao ? 'border-red-500 focus:border-red-500' : ''}`}
-                                />
-                                {validationErrors.data_medicao && (
-                                  <p className="text-xs text-red-500">{validationErrors.data_medicao}</p>
-                                )}
-                              </div>
-                            </TableCell>
+                            <TableCell><Input type="date" value={editingData.data_medicao?.split('T')[0] || ""} onChange={(e) => handleInputChange("data_medicao", e.target.value)} className="w-36" /></TableCell>
                             {[ 'pc', 'ap', 'bp', 'pd', 'pe', 'td', 'te'].map(field => (
-                              <TableCell key={field}>
-                                <div className="space-y-1">
-                                  <Input 
-                                    type="number" 
-                                    step="0.1" 
-                                    value={editingData[field as keyof Measurement] || ""} 
-                                    onChange={(e) => handleInputChange(field as keyof Measurement, e.target.value)} 
-                                    className={`w-20 ${validationErrors[field] ? 'border-red-500 focus:border-red-500' : ''}`}
-                                  />
-                                  {validationErrors[field] && (
-                                    <p className="text-xs text-red-500">{validationErrors[field]}</p>
-                                  )}
-                                </div>
-                              </TableCell>
+                              <TableCell key={field}><Input type="number" step="0.1" value={editingData[field as keyof Measurement] || ""} onChange={(e) => handleInputChange(field as keyof Measurement, e.target.value)} className="w-20" /></TableCell>
                             ))}
                             <TableCell>{editingData.ci?.toFixed(2)}</TableCell>
                             <TableCell>{editingData.cvai?.toFixed(2)}%</TableCell>
@@ -586,11 +636,17 @@ const PatientEvolution = () => {
                           </>
                         ) : (
                           <>
-                            <TableCell>{formatDate(m.data_medicao)}</TableCell>
-                            <TableCell>{m.pc}</TableCell><TableCell>{m.ap}</TableCell><TableCell>{m.bp}</TableCell><TableCell>{m.pd}</TableCell><TableCell>{m.pe}</TableCell><TableCell>{m.td}</TableCell><TableCell>{m.te}</TableCell>
-                            <TableCell><Badge variant="outline" className={getClassificationColor(m.ciClass)}>{m.ci?.toFixed(2)}</Badge></TableCell>
-                            <TableCell><Badge variant="outline" className={getClassificationColor(m.cvaiClass)}>{m.cvai?.toFixed(2)}%</Badge></TableCell>
-                            <TableCell><Badge variant="outline" className={getClassificationColor(m.tbcClass)}>{m.tbc?.toFixed(1)}</Badge></TableCell>
+                            <TableCell>{formatDateToBR(m.data_medicao)}</TableCell>
+                            <TableCell>{formatDecimal(m.pc)}</TableCell>
+                            <TableCell>{formatDecimal(m.ap)}</TableCell>
+                            <TableCell>{formatDecimal(m.bp)}</TableCell>
+                            <TableCell>{formatDecimal(m.pd)}</TableCell>
+                            <TableCell>{formatDecimal(m.pe)}</TableCell>
+                            <TableCell>{formatDecimal(m.td)}</TableCell>
+                            <TableCell>{formatDecimal(m.te)}</TableCell>
+                            <TableCell><Badge variant="outline" className={`font-semibold ${getSeverityBadgeClass(m.ciClass)}`}>{m.ci?.toFixed(2)}</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={`font-semibold ${getSeverityBadgeClass(m.cvaiClass)}`}>{m.cvai?.toFixed(2)}%</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={`font-semibold ${getSeverityBadgeClass(m.tbcClass)}`}>{m.tbc?.toFixed(1)}</Badge></TableCell>
                             <TableCell><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => handleEdit(m)}><Edit className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDelete(m.id_medida!)} className="hover:text-red-600"><Trash2 className="w-4 h-4" /></Button></div></TableCell>
                           </>
                         )}

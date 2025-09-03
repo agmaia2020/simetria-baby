@@ -52,13 +52,19 @@ export const usePatients = () => {
         .from('dpacientes')
         .select('*')
         .eq('id_paciente', id)
+        .eq('ativo', true)
         .single();
 
       if (error) {
         console.error("Erro ao buscar paciente:", error);
+        if (error.code === 'PGRST116') {
+          console.log("Paciente não encontrado ou inativo");
+          return null;
+        }
         throw error;
       }
 
+      console.log("Paciente encontrado:", data);
       return data;
     } catch (error) {
       console.error("Erro na busca do paciente:", error);

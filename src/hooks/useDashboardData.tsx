@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useUserFilter } from "@/hooks/useUserFilter";
 
 interface DashboardStats {
   totalPatients: number;
@@ -23,6 +24,7 @@ interface AgeGroup {
 }
 
 export const useDashboardData = () => {
+  const { loading: userFilterLoading, currentUserId, applyUserFilter } = useUserFilter();
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     malePatients: 0,
@@ -39,10 +41,16 @@ export const useDashboardData = () => {
     try {
       setLoading(true);
 
-      // Buscar dados básicos dos pacientes
+      // Aguardar carregamento das permissões de usuário
+      if (userFilterLoading || !currentUserId) {
+        return;
+      }
+
+      // Buscar dados básicos dos pacientes filtrados pelo usuário logado
       const { data: patients, error: patientsError } = await supabase
         .from('dpacientes')
         .select('*')
+        .eq('usuario_id', currentUserId)
         .eq('ativo', true);
 
       if (patientsError) {
@@ -51,16 +59,28 @@ export const useDashboardData = () => {
         return;
       }
 
-      // Buscar pacientes com medidas
+      // Verificar se o usuário possui pacientes cadastrados
+      if (!patients || patients.length === 0) {
+        setStats({ totalPatients: 0, malePatients: 0, femalePatients: 0, averageAge: 0, patientsWithMeasurements: 0, recentRegistrations: 0 });
+        setRaceData([]);
+        setAgeGroups([]);
+        setLoading(false);
+        return;
+      }
+
+      // Buscar medidas apenas dos pacientes do usuário logado
+      const patientIds = patients.map(p => p.id_paciente);
+      
       const { data: measurements, error: measurementsError } = await supabase
         .from('fmedidas')
         .select('id_paciente')
-        .not('id_paciente', 'is', null);
+        .in('id_paciente', patientIds);
 
       if (measurementsError) {
         console.error("Erro ao carregar medidas:", measurementsError);
       }
 
+      // Contar pacientes únicos que têm medidas (já filtrados pelo usuário)
       const uniquePatientsWithMeasurements = new Set(measurements?.map(m => m.id_paciente) || []).size;
 
       // Calcular estatísticas
@@ -176,14 +196,16 @@ export const useDashboardData = () => {
   };
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (!userFilterLoading && currentUserId) {
+      loadDashboardData();
+    }
+  }, [userFilterLoading, currentUserId]);
 
   return {
     stats,
     raceData,
     ageGroups,
-    loading,
+    loading: loading || userFilterLoading,
     refetch: loadDashboardData
   };
 };

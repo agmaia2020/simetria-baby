@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart, UserPlus, Ruler, List, UserCircle } from "lucide-react";
+import { BarChart, UserPlus, Ruler, List } from "lucide-react";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 // Importação do novo logotipo.
 // Certifique-se de que o caminho relativo ou o alias ('@') está correto para a estrutura do seu projeto.
 import novoLogo from "@/assets/Logo Modificado.png";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -60,11 +62,7 @@ const Index = () => {
             </div>
             
             {/* Ícone de Perfil do Usuário */}
-            <div className="flex items-center">
-              <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700">
-                <UserCircle className="w-7 h-7" />
-              </button>
-            </div>
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -107,15 +105,21 @@ const Index = () => {
       </main>
       
       {/* 4. Rodapé */}
-      <footer className="mt-16 pb-8 text-center text-gray-500">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-              <p className="text-sm">
-                  <strong>Sobre o Sistema:</strong> Este sistema permite o cadastro de pacientes e registro de medidas cranianas, 
-                  calculando automaticamente índices importantes como Índice Cefálico (CI), 
-                  Índice de Assimetria (CVAI) e Torção da Base do Crânio (TBC).
-              </p>
-              <p className="mt-2 text-xs">&copy; {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+      <footer className="mt-16 pb-8 text-center text-gray-500 border-t border-gray-200">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
+            <a href="/termos-de-servico" className="hover:text-blue-600 transition-colors">Termos de Serviço</a>
+            <span className="hidden md:inline">•</span>
+            <a href="/politica-de-privacidade" className="hover:text-blue-600 transition-colors">Política de Privacidade</a>
+            <span className="hidden md:inline">•</span>
+            <a href="mailto:suporte@simetrikbaby.com" className="hover:text-blue-600 transition-colors">Suporte</a>
           </div>
+          <div className="flex flex-col md:flex-row justify-center items-center gap-2 text-sm">
+            <p>© {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+            <span className="hidden md:inline">•</span>
+            <p>Versão 1.0.0</p>
+          </div>
+        </div>
       </footer>
     </div>
   );
