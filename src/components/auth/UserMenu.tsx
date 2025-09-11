@@ -1,4 +1,5 @@
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,16 +12,50 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { User, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export const UserMenu = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [userName, setUserName] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('nome')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Erro ao buscar nome do usuário:', error);
+          setUserName('');
+        } else {
+          setUserName(data?.nome || '');
+        }
+      } catch (error) {
+        console.error('Erro ao buscar nome do usuário:', error);
+        setUserName('');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserName();
+  }, [user?.id]);
 
   if (!user) {
     return null;
   }
 
-  const displayName = user.user_metadata?.nome || user.email;
+  const displayName = loading ? 'Carregando...' : (userName || user.email);
 
   return (
     <DropdownMenu>

@@ -128,19 +128,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signOut = async () => {
+    console.log('Iniciando logout...');
+    
     try {
       const { error } = await supabase.auth.signOut();
-      if (!error) {
-        toast({
-          title: "Logout realizado",
-          description: "Você foi desconectado com sucesso.",
-        });
-        // Redirecionar para a tela de login após logout bem-sucedido
-        window.location.href = '/auth';
+      if (error) {
+        console.error('Erro no logout do Supabase:', error);
       }
     } catch (error) {
-      console.error('Erro no logout:', error);
+      console.error('Erro inesperado no logout:', error);
     }
+    
+    // Sempre limpar o estado local independente de erros
+    console.log('Limpando estado local...');
+    setUser(null);
+    setSession(null);
+    
+    // Mostrar toast de sucesso
+    toast({
+      title: "Logout realizado",
+      description: "Você foi desconectado com sucesso.",
+    });
+    
+    // Sempre redirecionar para login
+    console.log('Redirecionando para /auth...');
+    window.location.href = '/auth';
   };
 
   const resetPassword = async (email: string) => {

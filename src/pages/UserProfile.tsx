@@ -14,6 +14,8 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userDataLoading, setUserDataLoading] = useState(true);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -23,6 +25,37 @@ const UserProfile = () => {
     newPassword: "",
     confirmPassword: ""
   });
+
+  // Carregar dados do usuário da tabela usuarios
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setUserDataLoading(true);
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('nome')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.error('Erro ao carregar dados do usuário:', error);
+          toast.error('Erro ao carregar dados do usuário');
+          setUserName(''); // Fallback para string vazia
+        } else {
+          setUserName(data?.nome || '');
+        }
+      } catch (error) {
+        console.error('Erro inesperado ao carregar dados do usuário:', error);
+        setUserName('');
+      } finally {
+        setUserDataLoading(false);
+      }
+    };
+    
+    loadUserData();
+  }, [user?.id]);
 
   if (!user) {
     navigate("/auth");
@@ -105,7 +138,7 @@ const UserProfile = () => {
               <Label htmlFor="name">Nome Completo</Label>
               <Input
                 id="name"
-                value={user.user_metadata?.nome || ""}
+                value={userDataLoading ? "Carregando..." : userName}
                 disabled
                 className="bg-gray-50"
               />
