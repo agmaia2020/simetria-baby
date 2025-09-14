@@ -84,19 +84,13 @@ export const LoginForm = () => {
           </Button>
         </form>
 
-        <div className="mt-4 text-center space-y-2">
+        <div className="mt-4 text-center">
           <Link 
             to="/auth/forgot-password" 
             className="text-sm text-blue-600 hover:underline"
           >
             Esqueceu sua senha?
           </Link>
-          <div className="text-sm text-gray-600">
-            Não tem uma conta?{' '}
-            <Link to="/auth/register" className="text-blue-600 hover:underline">
-              Cadastre-se
-            </Link>
-          </div>
         </div>
       </CardContent>
     </Card>

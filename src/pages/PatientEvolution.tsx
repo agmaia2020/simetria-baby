@@ -605,7 +605,7 @@ const PatientEvolution = () => {
       </main>
 
       <footer className="mt-16 pb-8 text-center text-gray-500">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8"><p className="mt-2 text-xs">&copy; {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p></div>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8"><p className="mt-2 text-xs">&copy; {new Date().getFullYear()} AM BI Análises Inteligentes. Todos os direitos reservados.</p></div>
       </footer>
     </div>
   );

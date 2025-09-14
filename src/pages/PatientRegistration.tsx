@@ -201,7 +201,7 @@ const PatientRegistration = () => {
             <a href="mailto:suporte@simetrikbaby.com" className="hover:text-blue-600 transition-colors">Suporte</a>
           </div>
           <div className="flex flex-col md:flex-row justify-center items-center gap-2 text-sm">
-            <p>© {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+            <p>© {new Date().getFullYear()} AM BI Análises Inteligentes. Todos os direitos reservados.</p>
             <span className="hidden md:inline">•</span>
             <p>Versão 1.0.0</p>
           </div>

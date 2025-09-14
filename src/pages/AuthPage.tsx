@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginForm } from '@/components/auth/LoginForm';
-import { RegisterForm } from '@/components/auth/RegisterForm';
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
 import novoLogo from '@/assets/Logo Modificado.png';
 
@@ -32,8 +31,6 @@ const AuthPage = () => {
 
   const renderForm = () => {
     switch (type) {
-      case 'register':
-        return <RegisterForm />;
       case 'forgot-password':
         return <ForgotPasswordForm />;
       default:
@@ -56,14 +53,14 @@ const AuthPage = () => {
       <footer className="pb-8 text-center text-gray-500">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
-            <a href="/termos-de-servico" className="hover:text-blue-600 transition-colors">Termos de Serviço</a>
+            <span onClick={() => navigate('/termos-de-servico')} className="hover:text-blue-600 transition-colors cursor-pointer">Termos de Serviço</span>
             <span className="hidden md:inline">•</span>
-            <a href="/politica-de-privacidade" className="hover:text-blue-600 transition-colors">Política de Privacidade</a>
+            <span onClick={() => navigate('/politica-de-privacidade')} className="hover:text-blue-600 transition-colors cursor-pointer">Política de Privacidade</span>
             <span className="hidden md:inline">•</span>
             <a href="mailto:suporte@simetrikbaby.com" className="hover:text-blue-600 transition-colors">Suporte</a>
           </div>
           <div className="flex flex-col md:flex-row justify-center items-center gap-2 text-sm">
-            <p>© {new Date().getFullYear()} Simetrik Baby. Todos os direitos reservados.</p>
+            <p>© {new Date().getFullYear()} AM BI Análises Inteligentes. Todos os direitos reservados.</p>
             <span className="hidden md:inline">•</span>
             <p>Versão 1.0.0</p>
           </div>

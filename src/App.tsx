@@ -87,22 +87,8 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/termos-de-servico" 
-              element={
-                <ProtectedRoute>
-                  <TermsOfServicePage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/politica-de-privacidade" 
-              element={
-                <ProtectedRoute>
-                  <PrivacyPolicyPage />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/termos-de-servico" element={<TermsOfServicePage />} />
+            <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
