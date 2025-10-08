@@ -32,7 +32,7 @@ const PatientsList = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { applyUserFilter, userFilterLoading, currentUserId } = useUserFilter();
+  const { applyUserFilter, loading: userFilterLoading, currentUserId } = useUserFilter();
   const [searchTerm, setSearchTerm] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,7 @@ const PatientsList = () => {
       let query = supabase.from('dpacientes').select('*').eq('ativo', true);
       
       // Aplicar filtro de usuário para permissões
-      query = applyUserFilter(query, currentUserId);
+      query = applyUserFilter(query as any, currentUserId) as typeof query;
       
       if (specificPatientId) {
         query = query.eq('id_paciente', parseInt(specificPatientId));

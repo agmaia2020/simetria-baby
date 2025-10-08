@@ -16,13 +16,15 @@ export const useUserFilter = () => {
     const checkAdminStatus = async () => {
       setLoading(true);
       try {
+        // Check if user has admin role in user_roles table
         const { data, error } = await supabase
-          .from('usuarios')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
         if (error) throw error;
-        setIsAdmin(data?.is_admin || false);
+        setIsAdmin(data !== null);
       } catch (err) {
         console.error("Erro ao verificar status de admin:", err);
         setIsAdmin(false);

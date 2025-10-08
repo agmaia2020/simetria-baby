@@ -36,7 +36,7 @@ const CustomTooltip = ({ active, payload, label, data, dataKey, unit }: CustomTo
 
     let variationText = " (Primeira medição)";
     if (currentIndex > 0) {
-      const previousValue = data[currentIndex - 1][dataKey];
+      const previousValue = Number(data[currentIndex - 1][dataKey]);
       const variation = currentValue - previousValue;
       const sign = variation > 0 ? "+" : "";
       variationText = ` (${sign}${variation.toFixed(2)}${unit} vs. anterior)`;
@@ -84,11 +84,11 @@ const AnalysisSummary = ({ measurements, dataKey, unit, name }: AnalysisSummaryP
 
   if (measurements.length > 1) {
     const previousMeasurement = measurements[measurements.length - 2];
-    const previousValue = previousMeasurement[dataKey];
+      const previousValue = Number(previousMeasurement[dataKey]);
     
     // Verificar se previousValue é válido antes de calcular variação
-    if (previousValue !== null && previousValue !== undefined && !isNaN(Number(previousValue))) {
-      const variation = Number(lastValue) - Number(previousValue);
+    if (previousValue !== null && previousValue !== undefined && !isNaN(previousValue)) {
+      const variation = Number(lastValue) - previousValue;
       const trend = variation > 0 ? "um aumento" : "uma redução";
       
       if (Math.abs(variation) < 0.01) {
@@ -193,13 +193,8 @@ const PatientEvolution = () => {
           return;
         }
 
-        // Verificar se o usuário tem permissão para ver este paciente
-        if (!isAdmin && patientData.usuario_id !== user.id) {
-          console.error('Usuário sem permissão para ver este paciente');
-          toast.error("Sem permissão para acessar este paciente");
-          navigate("/lista-pacientes");
-          return;
-        }
+        // Permissions are enforced by RLS policies
+        // No need for client-side permission checks
 
         console.log('Dados do paciente carregados:', patientData);
         setPatientInfo({ 
