@@ -46,12 +46,16 @@ export const useDashboardData = () => {
         return;
       }
 
-      // Buscar dados básicos dos pacientes filtrados pelo usuário logado
-      const { data: patients, error: patientsError } = await supabase
+      // Buscar dados básicos dos pacientes com filtro de usuário (respeitando permissões de admin)
+      let patientsQuery = supabase
         .from('dpacientes')
         .select('*')
-        .eq('usuario_id', currentUserId)
         .eq('ativo', true);
+      
+      // Aplicar filtro de usuário apenas se não for admin
+      patientsQuery = applyUserFilter(patientsQuery, currentUserId);
+      
+      const { data: patients, error: patientsError } = await patientsQuery;
 
       if (patientsError) {
         console.error("Erro ao carregar pacientes:", patientsError);

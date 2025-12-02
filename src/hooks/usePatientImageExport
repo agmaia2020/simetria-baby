@@ -1,0 +1,175 @@
+/**
+ * Hook para exportação de imagens (PNG) da evolução do paciente
+ * Exporta os 2 gráficos e a tabela em um arquivo ZIP
+ * 
+ * IMPORTANTE: Instalar dependências:
+ * npm install jszip file-saver
+ * npm install --save-dev @types/file-saver
+ */
+
+import { useState } from 'react';
+import { toast } from 'sonner';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+import {
+  captureRechartsGraph,
+  captureVisibleElement,
+} from '@/utils/pdfExport';
+
+interface PatientInfo {
+  nome: string;
+}
+
+interface UsePatientImageExportProps {
+  patientInfo: PatientInfo | null;
+  onExportStart?: () => void;
+  onExportEnd?: () => void;
+}
+
+export const usePatientImageExport = ({
+  patientInfo,
+  onExportStart,
+  onExportEnd,
+}: UsePatientImageExportProps) => {
+  const [isExportingImages, setIsExportingImages] = useState(false);
+
+  /**
+   * Converte Data URL para Blob
+   */
+  const dataUrlToBlob = (dataUrl: string): Blob => {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  const exportToImages = async () => {
+    if (!patientInfo) {
+      toast.error('Informações do paciente não disponíveis');
+      return;
+    }
+
+    setIsExportingImages(true);
+    toast.info('Preparando exportação das imagens...');
+
+    // Notificar início da exportação (para mostrar eixo Y nos gráficos)
+    onExportStart?.();
+
+    // Aguardar re-renderização do React e do Recharts
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    try {
+      console.log('🖼️ Iniciando exportação de imagens...');
+
+      const zip = new JSZip();
+      const patientName = patientInfo.nome.replace(/\s+/g, '_');
+      let capturedCount = 0;
+
+      // Capturar gráfico CI
+      console.log('📊 Capturando gráfico CI...');
+      const ciGraphData = await captureRechartsGraph('ci-card');
+      
+      if (ciGraphData) {
+        const ciBlob = dataUrlToBlob(ciGraphData);
+        zip.file(`${patientName}_grafico_CI.png`, ciBlob);
+        capturedCount++;
+        console.log('✅ Gráfico CI capturado');
+      } else {
+        console.warn('⚠️ Falha ao capturar gráfico CI');
+      }
+
+      // Capturar gráfico CVAI
+      console.log('📊 Capturando gráfico CVAI...');
+      const cvaiGraphData = await captureRechartsGraph('cvai-card');
+      
+      if (cvaiGraphData) {
+        const cvaiBlob = dataUrlToBlob(cvaiGraphData);
+        zip.file(`${patientName}_grafico_CVAI.png`, cvaiBlob);
+        capturedCount++;
+        console.log('✅ Gráfico CVAI capturado');
+      } else {
+        console.warn('⚠️ Falha ao capturar gráfico CVAI');
+      }
+
+      // Capturar tabela (escondendo coluna Ações)
+      console.log('📋 Capturando tabela...');
+      
+      const tableSection = document.getElementById('measurements-table-section');
+      const hiddenElements: HTMLElement[] = [];
+      
+      if (tableSection) {
+        const table = tableSection.querySelector('table');
+        if (table) {
+          // Esconder o cabeçalho da coluna Ações
+          const headerCells = table.querySelectorAll('thead th:last-child');
+          headerCells.forEach((cell) => {
+            const el = cell as HTMLElement;
+            hiddenElements.push(el);
+            el.style.display = 'none';
+          });
+          
+          // Esconder todas as células da coluna Ações no corpo da tabela
+          const bodyCells = table.querySelectorAll('tbody td:last-child');
+          bodyCells.forEach((cell) => {
+            const el = cell as HTMLElement;
+            hiddenElements.push(el);
+            el.style.display = 'none';
+          });
+        }
+      }
+      
+      const tableCanvas = await captureVisibleElement('measurements-table-section', {
+        scale: 2,
+      });
+      
+      // Restaurar a visibilidade da coluna "Ações"
+      hiddenElements.forEach((el) => {
+        el.style.display = '';
+      });
+
+      if (tableCanvas) {
+        const tableData = tableCanvas.toDataURL('image/png', 1.0);
+        const tableBlob = dataUrlToBlob(tableData);
+        zip.file(`${patientName}_tabela_medidas.png`, tableBlob);
+        capturedCount++;
+        console.log('✅ Tabela capturada');
+      } else {
+        console.warn('⚠️ Falha ao capturar tabela');
+      }
+
+      // Verificar se conseguiu capturar ao menos algo
+      if (capturedCount === 0) {
+        toast.error('Não foi possível capturar nenhum conteúdo');
+        return;
+      }
+
+      // Gerar e baixar o arquivo ZIP
+      console.log('📦 Gerando arquivo ZIP...');
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const filename = `${patientName}_imagens.zip`;
+      
+      saveAs(zipBlob, filename);
+      
+      console.log(`✅ ZIP salvo: ${filename} (${capturedCount} imagens)`);
+      toast.success(`${capturedCount} imagens exportadas com sucesso!`);
+
+    } catch (error) {
+      console.error('❌ Erro ao exportar imagens:', error);
+      toast.error('Erro ao exportar imagens. Por favor, tente novamente.');
+    } finally {
+      // Notificar fim da exportação (para restaurar UI)
+      onExportEnd?.();
+      setIsExportingImages(false);
+    }
+  };
+
+  return {
+    exportToImages,
+    isExportingImages,
+  };
+};

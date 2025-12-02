@@ -11,9 +11,12 @@ import { useMeasurements, Measurement } from "@/hooks/useMeasurements";
 import { usePatients } from "@/hooks/usePatients";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useUserFilter } from "@/hooks/useUserFilter";
+import { usePatientPdfExport } from "@/hooks/usePatientPdfExport";
+import { usePatientImageExport } from "@/hooks/usePatientImageExport.ts"; // NOVO IMPORT
+import { supabase } from "@/integrations/supabase/client";
 
 // Imports de layout e ícones
-import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, FileDown, ImageDown } from "lucide-react"; // ADICIONADO ImageDown
 import { UserMenu } from "@/components/auth/UserMenu";
 import novoLogo from "@/assets/Logo Modificado.png";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,7 +39,7 @@ const CustomTooltip = ({ active, payload, label, data, dataKey, unit }: CustomTo
 
     let variationText = " (Primeira medição)";
     if (currentIndex > 0) {
-      const previousValue = data[currentIndex - 1][dataKey];
+      const previousValue = Number(data[currentIndex - 1][dataKey]);
       const variation = currentValue - previousValue;
       const sign = variation > 0 ? "+" : "";
       variationText = ` (${sign}${variation.toFixed(2)}${unit} vs. anterior)`;
@@ -84,11 +87,11 @@ const AnalysisSummary = ({ measurements, dataKey, unit, name }: AnalysisSummaryP
 
   if (measurements.length > 1) {
     const previousMeasurement = measurements[measurements.length - 2];
-    const previousValue = previousMeasurement[dataKey];
+      const previousValue = Number(previousMeasurement[dataKey]);
     
     // Verificar se previousValue é válido antes de calcular variação
-    if (previousValue !== null && previousValue !== undefined && !isNaN(Number(previousValue))) {
-      const variation = Number(lastValue) - Number(previousValue);
+    if (previousValue !== null && previousValue !== undefined && !isNaN(previousValue)) {
+      const variation = Number(lastValue) - previousValue;
       const trend = variation > 0 ? "um aumento" : "uma redução";
       
       if (Math.abs(variation) < 0.01) {
@@ -131,7 +134,7 @@ interface MeasurementDisplay extends Measurement { ciClass: string; cvaiClass: s
 const PatientEvolution = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   const { user } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdminCheck();
   const { getMeasurementsByPatientId, updateMeasurement, deleteMeasurement, loading: measurementsLoading } = useMeasurements();
@@ -145,6 +148,25 @@ const PatientEvolution = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingData, setEditingData] = useState<Partial<MeasurementDisplay>>({});
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [userName, setUserName] = useState<string>("");
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // Hook de exportação de PDF
+  const { exportToPdf, isExporting } = usePatientPdfExport({
+    patientInfo,
+    measurements,
+    userName,
+    onExportStart: () => setIsExportingPdf(true),
+    onExportEnd: () => setIsExportingPdf(false),
+  });
+
+  // Hook de exportação de Imagens (NOVO)
+  const { exportToImages, isExportingImages } = usePatientImageExport({
+    patientInfo,
+    onExportStart: () => setIsExportingPdf(true),  // Reutiliza o mesmo estado para mostrar eixo Y
+    onExportEnd: () => setIsExportingPdf(false),
+  });
 
   const getClassification = useCallback((value: number | null, type: 'ci' | 'cvai' | 'tbc'): string => {
     if (value === null) return "-";
@@ -175,6 +197,34 @@ const PatientEvolution = () => {
     return { ci, cvai, tbc, ciClass: getClassification(ci, 'ci'), cvaiClass: getClassification(cvai, 'cvai'), tbcClass: getClassification(tbc, 'tbc') };
   }, [getClassification]);
 
+  // Carregar nome do usuário
+  useEffect(() => {
+    const fetchUserName = async () => {
+      if (!user?.id) {
+        setUserName("");
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('nome')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Erro ao buscar nome do usuário:', error);
+          setUserName(user.email || "");
+        } else {
+          setUserName(data?.nome || user.email || "");
+        }
+      } catch (error) {
+        console.error('Erro ao buscar nome do usuário:', error);
+        setUserName(user.email || "");
+      }
+    };
+    fetchUserName();
+  }, [user?.id, user?.email]);
+
   useEffect(() => {
     if (!pacienteId || adminLoading || userFilterLoading || !user || !currentUserId || dataLoaded) return;
 
@@ -193,13 +243,8 @@ const PatientEvolution = () => {
           return;
         }
 
-        // Verificar se o usuário tem permissão para ver este paciente
-        if (!isAdmin && patientData.usuario_id !== user.id) {
-          console.error('Usuário sem permissão para ver este paciente');
-          toast.error("Sem permissão para acessar este paciente");
-          navigate("/lista-pacientes");
-          return;
-        }
+        // Permissions are enforced by RLS policies
+        // No need for client-side permission checks
 
         console.log('Dados do paciente carregados:', patientData);
         setPatientInfo({ 
@@ -263,9 +308,7 @@ const PatientEvolution = () => {
     setEditingData({}); 
     setValidationErrors({});
   };
-  
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
+
   const validateField = (field: keyof Measurement, value: string | number | null): string | null => {
     if (field === 'data_medicao') {
       if (!value) return "Data é obrigatória";
@@ -439,7 +482,7 @@ const PatientEvolution = () => {
 
         {!isLoading && measurements.length > 0 && (
           <div className="grid lg:grid-cols-2 gap-8 mb-8">
-            <Card>
+            <Card id="ci-card">
               <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-blue-600" />Evolução do Índice Cefálico (CI)</CardTitle></CardHeader>
               <CardContent>
                 <div className="relative w-full h-[300px]">
@@ -451,6 +494,10 @@ const PatientEvolution = () => {
                         domain={[60, 110]} 
                         fontSize={12} 
                         ticks={[60, 70, 75, 85, 90, 100, 110]} 
+                        width={isExportingPdf ? 40 : 0}
+                        tick={isExportingPdf}
+                        axisLine={isExportingPdf}
+                        tickLine={isExportingPdf}
                       />
                       <Tooltip content={<CustomTooltip data={chartData} dataKey="CI" unit="" />} />
                       <ReferenceArea y1={100} y2={110} fill={ciReferenceData[5].hex} fillOpacity={0.3} />
@@ -469,7 +516,7 @@ const PatientEvolution = () => {
                       style={{ 
                         writingMode: 'vertical-rl', 
                         transform: 'rotate(180deg)', 
-                        top: '40px'  // Posição vertical para Braquicefalia 
+                        top: '40px'
                       }} 
                     > 
                       Braquicefalia 
@@ -479,7 +526,7 @@ const PatientEvolution = () => {
                       style={{ 
                         writingMode: 'vertical-rl', 
                         transform: 'rotate(180deg)', 
-                        bottom: '35px'  // Posição vertical para Dolicocefalia 
+                        bottom: '35px'
                       }} 
                     > 
                       Dolicocefalia 
@@ -499,14 +546,14 @@ const PatientEvolution = () => {
             </Card>
             
             {/* Card do CVAI */}
-            <Card>
+            <Card id="cvai-card">
               <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-purple-600" />Evolução do CVAI (%)</CardTitle></CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={cvaiChartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="data" fontSize={12} />
-                    <YAxis domain={[0, 15]} fontSize={12} />
+                    <YAxis domain={[0, 15]} fontSize={12} width={isExportingPdf ? 40 : 0} tick={isExportingPdf} axisLine={isExportingPdf} tickLine={isExportingPdf}  />
                     <Tooltip content={<CustomTooltip data={cvaiChartData} dataKey="CVAI" unit="%" />} />
                     <ReferenceArea y1={8.75} y2={15} fill={cvaiLegend[3].hex} fillOpacity={0.3} />
                     <ReferenceArea y1={6.25} y2={8.75} fill={cvaiLegend[2].hex} fillOpacity={0.3} />
@@ -529,7 +576,7 @@ const PatientEvolution = () => {
           </div>
         )}
 
-        <Card>
+        <Card id="measurements-table-section">
           <CardHeader><CardTitle>Histórico de Medidas</CardTitle></CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -602,6 +649,30 @@ const PatientEvolution = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Botões de Exportação - PDF e Imagens */}
+        {!isLoading && measurements.length > 0 && (
+          <div className="mt-8 flex justify-center gap-4">
+            <Button
+              onClick={exportToPdf}
+              disabled={isExporting || isExportingImages}
+              size="lg"
+              className="gap-2"
+            >
+              <FileDown className="w-5 h-5" />
+              {isExporting ? 'Exportando...' : 'Exportar para PDF'}
+            </Button>
+            <Button
+              onClick={exportToImages}
+              disabled={isExporting || isExportingImages}
+              size="lg"
+              className="gap-2"
+            >
+              <ImageDown className="w-5 h-5" />
+              {isExportingImages ? 'Exportando...' : 'Exportar Imagens'}
+            </Button>
+          </div>
+        )}
       </main>
 
       <footer className="mt-16 pb-8 text-center text-gray-500">

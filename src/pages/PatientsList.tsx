@@ -7,14 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { usePatients } from "@/hooks/usePatients";
 
 // Imports para o novo layout consistente
 import { ArrowLeft, Search, Edit, Trash2, Plus, Ruler, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { UserMenu } from "@/components/auth/UserMenu";
 import novoLogo from "@/assets/Logo Modificado.png";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserFilter } from "@/hooks/useUserFilter";
 
 // Sua interface, mantida como está
 interface Patient {
@@ -32,44 +31,30 @@ const PatientsList = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { applyUserFilter, userFilterLoading, currentUserId } = useUserFilter();
+  const { getPatients, deletePatient, loading: patientsLoading } = usePatients();
   const [searchTerm, setSearchTerm] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const patientsPerPage = 10;
   const specificPatientId = searchParams.get('paciente_id');
 
   useEffect(() => {
-    if (!userFilterLoading) {
-      loadPatients();
-    }
-  }, [specificPatientId, userFilterLoading, currentUserId]);
+    loadPatients();
+  }, [specificPatientId]);
 
-  // Todas as suas funções (loadPatients, formatDate, calculateAge, etc.)
-  // permanecem exatamente as mesmas. Nenhuma alteração foi feita nelas.
   const loadPatients = async () => {
     try {
       setLoading(true);
       
-      // Verificar se currentUserId está disponível antes de prosseguir
-      if (!currentUserId) {
-        console.warn('currentUserId não está disponível ainda');
-        return;
-      }
+      const data = await getPatients();
       
-      let query = supabase.from('dpacientes').select('*').eq('ativo', true);
-      
-      // Aplicar filtro de usuário para permissões
-      query = applyUserFilter(query, currentUserId);
-      
+      let filteredData = data;
       if (specificPatientId) {
-        query = query.eq('id_paciente', parseInt(specificPatientId));
+        filteredData = data.filter(p => p.id_paciente === parseInt(specificPatientId));
       }
       
-      const { data, error } = await query.order('data_cadastro', { ascending: false });
-      if (error) throw error;
-      setPatients(data || []);
+      setPatients(filteredData || []);
     } catch (error) {
       console.error('Erro ao carregar pacientes:', error);
       toast.error("Erro ao carregar pacientes");
@@ -122,13 +107,10 @@ const PatientsList = () => {
 
   const handleDelete = async (patientId: number, patientName: string) => {
     if (window.confirm(`Tem certeza que deseja excluir o paciente ${patientName}?`)) {
-      try {
-        const { error } = await supabase.from('dpacientes').update({ ativo: false, data_exclusao: new Date().toISOString() }).eq('id_paciente', patientId);
-        if (error) throw error;
+      const success = await deletePatient(patientId);
+      if (success) {
         toast.success("Paciente excluído com sucesso!");
         loadPatients();
-      } catch (error) {
-        toast.error("Erro ao excluir paciente");
       }
     }
   };
@@ -170,7 +152,7 @@ const PatientsList = () => {
               <Table>
                 <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Data de Nascimento</TableHead><TableHead>Idade</TableHead><TableHead>Sexo</TableHead><TableHead>Raça/Cor</TableHead><TableHead>Data Cadastro</TableHead><TableHead className="text-center">Ações</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {loading ? (<TableRow><TableCell colSpan={7} className="text-center py-12">Carregando pacientes...</TableCell></TableRow>) : currentPatients.length === 0 ? (<TableRow><TableCell colSpan={7} className="text-center py-12">{searchTerm ? "Nenhum paciente encontrado." : "Nenhum paciente cadastrado."}</TableCell></TableRow>) : (
+                  {(loading || patientsLoading) ? (<TableRow><TableCell colSpan={7} className="text-center py-12">Carregando pacientes...</TableCell></TableRow>) : currentPatients.length === 0 ? (<TableRow><TableCell colSpan={7} className="text-center py-12">{searchTerm ? "Nenhum paciente encontrado." : "Nenhum paciente cadastrado."}</TableCell></TableRow>) : (
                     currentPatients.map((patient) => (
                       <TableRow key={patient.id_paciente} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{patient.nome}</TableCell>

@@ -38,7 +38,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Configurar listener de mudanças de auth primeiro
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session);
+        console.log('🔐 [useAuth] Auth state changed:', event, session);
+        console.log('🔐 [useAuth] User ID:', session?.user?.id);
+        console.log('🔐 [useAuth] User email:', session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -47,6 +49,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Verificar sessão existente
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔐 [useAuth] Sessão existente encontrada:', session);
+      console.log('🔐 [useAuth] User ID da sessão:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

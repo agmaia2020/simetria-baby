@@ -1,0 +1,49 @@
+/* Estilos de exportação */
+.export-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  margin-bottom: 40px;
+}
+
+.export-pdf-button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.export-pdf-button:hover {
+  background-color: #0056b3;
+}
+
+/* Modo PDF: empilhar gráficos verticalmente e aumentar espaçamento */
+.pdf-mode main .grid {
+  display: block !important;
+}
+.pdf-mode .card,
+.pdf-mode .card-content,
+.pdf-mode .card-header {
+  width: 100% !important;
+}
+.pdf-mode .recharts-responsive-container {
+  width: 100% !important;
+}
+.pdf-mode .container,
+.pdf-mode main {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+.pdf-mode .grid > * + * { /* espaçamento entre blocos */
+  margin-top: 24px !important;
+}
+
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+}

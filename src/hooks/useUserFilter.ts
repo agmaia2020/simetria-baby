@@ -7,38 +7,54 @@ export const useUserFilter = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) {
+  const checkAdminStatus = useCallback(async () => {
+    if (!user?.id) {
       setIsAdmin(false);
       setLoading(false);
       return;
     }
-    const checkAdminStatus = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('usuarios')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
-        if (error) throw error;
-        setIsAdmin(data?.is_admin || false);
-      } catch (err) {
-        console.error("Erro ao verificar status de admin:", err);
-        setIsAdmin(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkAdminStatus();
-  }, [user]);
 
-  const applyUserFilter = useCallback(<T extends { eq: (column: string, value: any) => T }>(query: T, userId: string): T => {
-    if (isAdmin) {
-      return query;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Erro ao verificar status de admin:', error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(data?.is_admin || false);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar admin:', error);
+      setIsAdmin(false);
+    } finally {
+      setLoading(false);
     }
-    return query.eq('usuario_id', userId);
-  }, [isAdmin]);
+  }, [user?.id]);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, [checkAdminStatus]);
+
+  const applyUserFilter = useCallback((query: any, userId?: string) => {
+    const finalUserId = userId || user?.id;
+    
+    console.log('🔧 [useUserFilter] Aplicando filtro:');
+    console.log('   - isAdmin:', isAdmin);
+    console.log('   - finalUserId:', finalUserId);
+    
+    if (isAdmin) {
+      console.log('👑 [useUserFilter] Usuário é ADMIN - retornando query SEM filtro (todos os registros)');
+      return query; // Admin vê todos os registros
+    }
+    
+    console.log('👤 [useUserFilter] Usuário comum - aplicando filtro por usuario_id:', finalUserId);
+    return query.eq('usuario_id', finalUserId);
+  }, [isAdmin, user?.id]);
 
   return useMemo(() => ({
     isAdmin,

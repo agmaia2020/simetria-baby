@@ -18,6 +18,7 @@ import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import Debug from "./pages/Debug";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <UserProfile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/debug" 
+              element={
+                <ProtectedRoute>
+                  <Debug />
                 </ProtectedRoute>
               } 
             />
