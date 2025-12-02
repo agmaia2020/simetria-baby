@@ -16,17 +16,29 @@ export const useUserFilter = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
 
-      if (error) {
-        console.error('Erro ao verificar status de admin:', error);
-        setIsAdmin(false);
+      if (roleError) throw roleError;
+
+      if (roleData) {
+        setIsAdmin(true);
       } else {
-        setIsAdmin(data?.is_admin || false);
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(data?.is_admin || false);
+        }
       }
     } catch (error) {
       console.error('Erro ao verificar admin:', error);

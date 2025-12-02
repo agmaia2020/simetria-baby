@@ -46,7 +46,6 @@ const PatientsList = () => {
   const loadPatients = async () => {
     try {
       setLoading(true);
-      
       const data = await getPatients();
       
       let filteredData = data;

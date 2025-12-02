@@ -102,7 +102,7 @@ const MeasurementsRegistration = () => {
       let query = supabase.from("dpacientes").select("id_paciente, nome, data_nascimento, sexo").eq("ativo", true);
       
       // Aplicar filtro de usuário baseado em permissões
-      query = applyUserFilter(query, currentUserId);
+      query = applyUserFilter(query as any, currentUserId) as typeof query;
       
       const { data, error } = await query.order("nome");
       if (error) throw error;
@@ -122,7 +122,7 @@ const MeasurementsRegistration = () => {
       let query = supabase.from("dpacientes").select("id_paciente, nome, data_nascimento, sexo").eq("id_paciente", parseInt(pacienteId)).eq("ativo", true);
       
       // Aplicar filtro de usuário baseado em permissões
-      query = applyUserFilter(query, currentUserId);
+      query = applyUserFilter(query as any, currentUserId) as typeof query;
       
       const { data, error } = await query.single();
       if (error) { toast.error("Paciente não encontrado ou sem permissão de acesso"); return; }
@@ -254,7 +254,7 @@ const MeasurementsRegistration = () => {
       {/* 2. Conteúdo Principal da Página */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex items-center gap-3 mb-8">
-          <button onClick={() => navigate(pacienteId ? "/lista-pacientes" : -1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="Voltar">
+          <button onClick={() => navigate(pacienteId ? "/lista-pacientes" : "/home")} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="Voltar">
             <ArrowLeft className="w-6 h-6 text-gray-700" />
           </button>
           <div>

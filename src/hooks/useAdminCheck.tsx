@@ -16,18 +16,19 @@ export const useAdminCheck = () => {
       }
 
       try {
-        // Verificar se o usuário tem status de admin
+        // Check if user has admin role in user_roles table
         const { data, error } = await supabase
-          .from('usuarios')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
 
         if (error) {
           console.error('Erro ao verificar status de admin:', error);
           setIsAdmin(false);
         } else {
-          setIsAdmin(data?.is_admin === true);
+          setIsAdmin(data !== null);
         }
       } catch (error) {
         console.error('Erro ao verificar status de admin:', error);
