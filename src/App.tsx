@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { RootRedirect } from "@/components/auth/RootRedirect";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import PatientRegistration from "./pages/PatientRegistration";
@@ -19,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import Debug from "./pages/Debug";
+import LandingPage from "./pages/LandingPage";
 
 const queryClient = new QueryClient();
 
@@ -30,8 +29,13 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<RootRedirect />} />
+            {/* Landing Page - Pública */}
+            <Route path="/" element={<LandingPage />} />
+            
+            {/* Autenticação */}
             <Route path="/auth/:type?" element={<AuthPage />} />
+            
+            {/* Rotas Protegidas */}
             <Route 
               path="/home" 
               element={
@@ -96,8 +100,12 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            
+            {/* Páginas Públicas */}
             <Route path="/termos-de-servico" element={<TermsOfServicePage />} />
             <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
+            
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

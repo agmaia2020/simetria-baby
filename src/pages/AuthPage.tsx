@@ -1,6 +1,5 @@
-
 import { useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
@@ -13,7 +12,7 @@ const AuthPage = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate('/Index');
+      navigate('/home');  // ← CORRIGIDO: era '/Index'
     }
   }, [user, loading, navigate]);
 
@@ -26,7 +25,7 @@ const AuthPage = () => {
   }
 
   if (user) {
-    return null; // Será redirecionado pelo useEffect
+    return null;
   }
 
   const renderForm = () => {
@@ -47,6 +46,14 @@ const AuthPage = () => {
           <span className="text-3xl font-bold text-gray-800">Simetrik Baby</span>
         </div>
         {renderForm()}
+        
+        {/* Link para voltar à Landing Page */}
+        <Link 
+          to="/" 
+          className="mt-6 text-sm text-gray-500 hover:text-blue-600 transition-colors flex items-center gap-1"
+        >
+          ← Voltar para a página inicial
+        </Link>
       </div>
       
       {/* Rodapé Padrão */}
