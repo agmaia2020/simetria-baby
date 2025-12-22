@@ -166,11 +166,43 @@ const PatientRegistration = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label>Sexo *</Label>
-                    <Select value={formData.sexo} onValueChange={(value) => handleInputChange("sexo", value)}><SelectTrigger><SelectValue placeholder="Selecione o sexo" /></SelectTrigger><SelectContent><SelectItem value="masculino">Masculino</SelectItem><SelectItem value="feminino">Feminino</SelectItem></SelectContent></Select>
+                    <Select 
+                      value={formData.sexo} 
+                      onValueChange={(value) => handleInputChange("sexo", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o sexo" />
+                      </SelectTrigger>
+                      <SelectContent 
+                        position="popper"
+                        className="max-h-60 overflow-y-auto"
+                      >
+                        <SelectItem value="masculino">Masculino</SelectItem>
+                        <SelectItem value="feminino">Feminino</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Raça/Cor *</Label>
-                    <Select value={formData.raca} onValueChange={(value) => handleInputChange("raca", value)}><SelectTrigger><SelectValue placeholder="Selecione a raça/cor" /></SelectTrigger><SelectContent><SelectItem value="branca">Branca</SelectItem><SelectItem value="preta">Preta</SelectItem><SelectItem value="parda">Parda</SelectItem><SelectItem value="amarela">Amarela</SelectItem><SelectItem value="indigena">Indígena</SelectItem><SelectItem value="oriental">Oriental</SelectItem></SelectContent></Select>
+                    <Select 
+                      value={formData.raca} 
+                      onValueChange={(value) => handleInputChange("raca", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a raça/cor" />
+                      </SelectTrigger>
+                      <SelectContent 
+                        position="popper"
+                        className="max-h-60 overflow-y-auto"
+                      >
+                        <SelectItem value="branca">Branca</SelectItem>
+                        <SelectItem value="preta">Preta</SelectItem>
+                        <SelectItem value="parda">Parda</SelectItem>
+                        <SelectItem value="amarela">Amarela</SelectItem>
+                        <SelectItem value="indigena">Indígena</SelectItem>
+                        <SelectItem value="oriental">Oriental</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
