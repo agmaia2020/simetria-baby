@@ -156,14 +156,28 @@ const PatientRegistration = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="nome">Nome Completo *</Label>
-                    <Input id="nome" type="text" value={formData.nome} onChange={(e) => handleInputChange("nome", e.target.value)} placeholder="Digite o nome completo" required />
+                    <Input 
+                      id="nome" 
+                      type="text" 
+                      value={formData.nome} 
+                      onChange={(e) => handleInputChange("nome", e.target.value)} 
+                      placeholder="Digite o nome completo" 
+                      required 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="data_nascimento">Data de Nascimento *</Label>
-                    <Input id="data_nascimento" type="date" value={formData.data_nascimento} onChange={(e) => handleInputChange("data_nascimento", e.target.value)} required />
+                    <Input 
+                      id="data_nascimento" 
+                      type="date" 
+                      value={formData.data_nascimento} 
+                      onChange={(e) => handleInputChange("data_nascimento", e.target.value)} 
+                      required 
+                    />
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
+                  {/* Select de Sexo - CORRIGIDO para mobile/Mac */}
                   <div className="space-y-2">
                     <Label>Sexo *</Label>
                     <Select 
@@ -174,7 +188,8 @@ const PatientRegistration = () => {
                         <SelectValue placeholder="Selecione o sexo" />
                       </SelectTrigger>
                       <SelectContent 
-                        position="popper"
+                        position="popper" 
+                        modal={false}
                         className="max-h-60 overflow-y-auto"
                       >
                         <SelectItem value="masculino">Masculino</SelectItem>
@@ -182,6 +197,7 @@ const PatientRegistration = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  {/* Select de Raça/Cor - CORRIGIDO para mobile/Mac */}
                   <div className="space-y-2">
                     <Label>Raça/Cor *</Label>
                     <Select 
@@ -192,7 +208,8 @@ const PatientRegistration = () => {
                         <SelectValue placeholder="Selecione a raça/cor" />
                       </SelectTrigger>
                       <SelectContent 
-                        position="popper"
+                        position="popper" 
+                        modal={false}
                         className="max-h-60 overflow-y-auto"
                       >
                         <SelectItem value="branca">Branca</SelectItem>

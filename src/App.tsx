@@ -18,6 +18,7 @@ import TermsOfServicePage from "./pages/TermsOfServicePage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import Debug from "./pages/Debug";
 import LandingPage from "./pages/LandingPage";
+import PatientGallery from "@/pages/PatientGallery";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            <Route path="/galeria-paciente" element={<PatientGallery />} />
             
             {/* Páginas Públicas */}
             <Route path="/termos-de-servico" element={<TermsOfServicePage />} />

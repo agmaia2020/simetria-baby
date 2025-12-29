@@ -16,11 +16,13 @@ import {
   addPdfFooter,
   addSignatureField,
   addProfessionalInfoBelowName,
+  addPhotoComparisonSection,
   calculateAge,
   parsePtBrDate,
   fetchFaviconDataUrl,
   assetToDataUrl,
   type PatientPdfData,
+  type PhotoPairForPdf,
 } from '@/utils/pdfExport';
 import novoLogo from '@/assets/Logo Modificado.png';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,7 +55,7 @@ export const usePatientPdfExport = ({
 }: UsePatientPdfExportProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
-  const exportToPdf = async () => {
+  const exportToPdf = async (photoPairs?: PhotoPairForPdf[]) => {
     if (!patientInfo) {
       toast.error('Informações do paciente não disponíveis');
       return;
@@ -71,6 +73,9 @@ export const usePatientPdfExport = ({
 
     try {
       console.log('🚀 Iniciando exportação de PDF...');
+      if (photoPairs && photoPairs.length > 0) {
+        console.log(`📷 Incluindo ${photoPairs.length} par(es) de fotos`);
+      }
 
       // Capturar gráfico CI
       console.log('📊 Capturando gráfico CI...');
@@ -166,11 +171,15 @@ export const usePatientPdfExport = ({
         profissional: userName || 'N/A',
       };
 
-      // Calcular total de páginas
+      // Calcular total de páginas (será atualizado no final)
       let totalPages = 0;
       if (ciGraphData) totalPages++;
       if (cvaiGraphData) totalPages++;
       if (tableData) totalPages++;
+      if (photoPairs && photoPairs.length > 0) {
+        // Estimar páginas de fotos (2 pares por página aproximadamente)
+        totalPages += Math.ceil(photoPairs.length / 2);
+      }
 
       let currentPage = 1;
       let isFirstPage = true;
@@ -193,7 +202,9 @@ export const usePatientPdfExport = ({
         }
       } catch {}
 
-      // Função auxiliar para adicionar imagem ao PDF
+      const profissionalInfo = { especialidade: profissionalEspecialidade, crefito: profissionalCrefito };
+
+      // Função auxiliar para adicionar imagem ao PDF (SEM assinatura)
       const addImageToPdf = async (
         imageData: string,
         title: string
@@ -209,7 +220,7 @@ export const usePatientPdfExport = ({
           iconDataUrl || undefined,
           6,
           5,
-          { especialidade: profissionalEspecialidade, crefito: profissionalCrefito }
+          profissionalInfo
         );
 
         // Título do gráfico
@@ -255,7 +266,7 @@ export const usePatientPdfExport = ({
         await addImageToPdf(cvaiGraphData, 'Evolução do CVAI (%)');
       }
 
-      // Adicionar tabela
+      // Adicionar tabela (SEM assinatura - será adicionada no final)
       if (tableData && tableCanvas) {
         if (!isFirstPage) {
           pdf.addPage();
@@ -268,7 +279,7 @@ export const usePatientPdfExport = ({
           iconDataUrl || undefined,
           6,
           5,
-          { especialidade: profissionalEspecialidade, crefito: profissionalCrefito }
+          profissionalInfo
         );
 
         pdf.setFont('helvetica', 'bold');
@@ -280,14 +291,9 @@ export const usePatientPdfExport = ({
         let tableWidth = maxTableWidth;
         let tableHeight = tableWidth * tableRatio;
 
-        const usefulWidthMm = pageWidth - 20;
-        const lineLengthMm = Math.round(usefulWidthMm * 0.55);
-        const bottomMarginMm = 25;
-        const targetPercent = 0.85;
-        const signatureY = Math.min(pageHeight - bottomMarginMm, Math.round(pageHeight * targetPercent));
-        const signatureX = (pageWidth - lineLengthMm) / 2;
+        // Calcular altura disponível (sem assinatura nesta página se houver fotos)
         const contentTopY = headerHeight + 15;
-        const availableHeight = signatureY - contentTopY - 15;
+        const availableHeight = pageHeight - contentTopY - 30; // Margem inferior
 
         // Ajustar se muito grande
         if (tableHeight > availableHeight) {
@@ -299,20 +305,67 @@ export const usePatientPdfExport = ({
         const yPos = contentTopY;
 
         pdf.addImage(tableData, 'PNG', xPos, yPos, tableWidth, tableHeight);
-        addSignatureField(pdf, signatureX, signatureY, pdfData.profissional, lineLengthMm, 1, 4);
-        const centerX = signatureX + lineLengthMm / 2;
-        const baseY = signatureY + 4; // mesmo spacing do nome
-        // Informações abaixo do nome: especialidade e Crefito Nº
-        // Fonte 12, centralizado, mantendo espaçamento consistente
-        // Somente renderiza se existir valor
-        addProfessionalInfoBelowName(
-          pdf,
-          centerX,
-          baseY,
-          { especialidade: profissionalEspecialidade, crefito: profissionalCrefito },
-          5
-        );
         addPdfFooter(pdf, currentPage, totalPages, pdfData.profissional);
+        
+        currentPage++;
+        isFirstPage = false;
+      }
+
+      // Adicionar seção de fotos comparativas (se houver)
+      if (photoPairs && photoPairs.length > 0) {
+        console.log('📷 Adicionando fotos comparativas ao PDF...');
+        await addPhotoComparisonSection(
+          pdf,
+          photoPairs,
+          50, // headerHeight
+          pdfData,
+          iconDataUrl || undefined,
+          profissionalInfo
+        );
+        console.log('✅ Fotos adicionadas');
+      }
+
+      // Adicionar página final com assinatura
+      pdf.addPage();
+      const finalHeaderHeight = addPdfHeader(
+        pdf,
+        pdfData,
+        10,
+        iconDataUrl || undefined,
+        6,
+        5,
+        profissionalInfo
+      );
+
+      // Posicionar assinatura no centro da página
+      const usefulWidthMm = pageWidth - 20;
+      const lineLengthMm = Math.round(usefulWidthMm * 0.55);
+      const signatureX = (pageWidth - lineLengthMm) / 2;
+      const signatureY = pageHeight * 0.5; // Meio da página
+
+      addSignatureField(pdf, signatureX, signatureY, pdfData.profissional, lineLengthMm, 1, 4);
+      const centerX = signatureX + lineLengthMm / 2;
+      const baseY = signatureY + 4;
+      addProfessionalInfoBelowName(
+        pdf,
+        centerX,
+        baseY,
+        profissionalInfo,
+        5
+      );
+
+      // Atualizar total de páginas e adicionar rodapé na última página
+      totalPages = pdf.getNumberOfPages();
+      addPdfFooter(pdf, totalPages, totalPages, pdfData.profissional);
+
+      // Atualizar rodapés de todas as páginas com o total correto
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        // Limpar área do rodapé
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, pageHeight - 15, pageWidth, 15, 'F');
+        // Adicionar rodapé atualizado
+        addPdfFooter(pdf, i, totalPages, pdfData.profissional);
       }
 
       // Salvar PDF

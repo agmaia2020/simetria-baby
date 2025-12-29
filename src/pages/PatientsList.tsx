@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { usePatients } from "@/hooks/usePatients";
 
 // Imports para o novo layout consistente
-import { ArrowLeft, Search, Edit, Trash2, Plus, Ruler, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Search, Edit, Trash2, Plus, Ruler, TrendingUp, ChevronLeft, ChevronRight, Camera } from "lucide-react";
 import { UserMenu } from "@/components/auth/UserMenu";
 import novoLogo from "@/assets/Logo Modificado.png";
 import { useAuth } from "@/hooks/useAuth";
@@ -103,6 +103,7 @@ const PatientsList = () => {
   const handleEdit = (id: number) => navigate(`/cadastro-paciente?edit_id=${id}`);
   const handleMeasurements = (id: number) => navigate(`/cadastro-medidas?paciente_id=${id}`);
   const handleEvolution = (id: number) => navigate(`/evolucao-paciente?paciente_id=${id}`);
+  const handleGallery = (id: number) => navigate(`/galeria-paciente?paciente_id=${id}`);
 
   const handleDelete = async (patientId: number, patientName: string) => {
     if (window.confirm(`Tem certeza que deseja excluir o paciente ${patientName}?`)) {
@@ -132,7 +133,7 @@ const PatientsList = () => {
         {/* Cabeçalho da página com Título, Busca e Botão de Ação */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/')} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="Voltar"><ArrowLeft className="w-6 h-6 text-gray-700" /></button>
+            <button onClick={() => navigate('/home')} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="Voltar"><ArrowLeft className="w-6 h-6 text-gray-700" /></button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Lista de Pacientes</h1>
               <p className="mt-1 text-lg text-gray-600">Gerencie, edite e visualize os pacientes cadastrados.</p>
@@ -163,6 +164,7 @@ const PatientsList = () => {
                         <TableCell>
                           <div className="flex items-center justify-center gap-1">
                             <Button size="icon" variant="ghost" onClick={() => handleEvolution(patient.id_paciente)} title="Ver Evolução"><TrendingUp className="w-4 h-4" /></Button>
+                            <Button size="icon" variant="ghost" onClick={() => handleGallery(patient.id_paciente)} title="Galeria de Fotos"><Camera className="w-4 h-4" /></Button>
                             <Button size="icon" variant="ghost" onClick={() => handleMeasurements(patient.id_paciente)} title="Cadastrar Medidas"><Ruler className="w-4 h-4" /></Button>
                             <Button size="icon" variant="ghost" onClick={() => handleEdit(patient.id_paciente)} title="Editar Paciente"><Edit className="w-4 h-4" /></Button>
                             <Button size="icon" variant="ghost" onClick={() => handleDelete(patient.id_paciente, patient.nome)} className="hover:text-red-600" title="Excluir Paciente"><Trash2 className="w-4 h-4" /></Button>

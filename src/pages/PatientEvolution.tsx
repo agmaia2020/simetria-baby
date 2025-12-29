@@ -12,14 +12,17 @@ import { usePatients } from "@/hooks/usePatients";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useUserFilter } from "@/hooks/useUserFilter";
 import { usePatientPdfExport } from "@/hooks/usePatientPdfExport";
-import { usePatientImageExport } from "@/hooks/usePatientImageExport.ts"; // NOVO IMPORT
+import { usePatientImageExport } from "@/hooks/usePatientImageExport.ts";
 import { supabase } from "@/integrations/supabase/client";
 
 // Imports de layout e ícones
-import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, FileDown, ImageDown } from "lucide-react"; // ADICIONADO ImageDown
+import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, FileDown, ImageDown } from "lucide-react";
 import { UserMenu } from "@/components/auth/UserMenu";
 import novoLogo from "@/assets/Logo Modificado.png";
 import { useAuth } from "@/hooks/useAuth";
+
+// Import do Modal de Seleção de Fotos Comparativas
+import PhotoComparisonModal, { PhotoPairForExport } from "@/components/photos/PhotoComparisonModal";
 
 // --- Componentes de Análise (Tooltip e Storytelling) ---
 interface CustomTooltipProps {
@@ -151,6 +154,10 @@ const PatientEvolution = () => {
   const [userName, setUserName] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // Estado para controlar o modal de seleção de fotos
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [photoPairsForExport, setPhotoPairsForExport] = useState<PhotoPairForExport[]>([]);
 
   // Hook de exportação de PDF
   const { exportToPdf, isExporting } = usePatientPdfExport({
@@ -420,6 +427,26 @@ const PatientEvolution = () => {
     }
   };
 
+  // Handler para abrir o modal de seleção de fotos
+  const handleExportPdfClick = () => {
+    setIsPhotoModalOpen(true);
+  };
+
+  // Handler para exportar com fotos selecionadas
+  const handleExportWithPhotos = (pairs: PhotoPairForExport[]) => {
+    setPhotoPairsForExport(pairs);
+    setIsPhotoModalOpen(false);
+    // Passar os pares de fotos para o exportToPdf
+    exportToPdf(pairs);
+  };
+
+  // Handler para exportar sem fotos
+  const handleExportWithoutPhotos = () => {
+    setPhotoPairsForExport([]);
+    setIsPhotoModalOpen(false);
+    exportToPdf();
+  };
+
   const chartData = (measurements || [])
     .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime())
     .map(m => ({ data: formatDate(m.data_medicao), CI: m.ci, classification: m.ciClass }));
@@ -580,11 +607,21 @@ const PatientEvolution = () => {
           <CardHeader><CardTitle>Histórico de Medidas</CardTitle></CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Data</TableHead><TableHead>PC</TableHead><TableHead>AP</TableHead><TableHead>BP</TableHead><TableHead>PD</TableHead><TableHead>PE</TableHead><TableHead>TD</TableHead><TableHead>TE</TableHead>
-                    <TableHead>CI</TableHead><TableHead>CVAI</TableHead><TableHead>TBC</TableHead><TableHead>Ações</TableHead>
+                    <TableHead className="w-24">Data</TableHead>
+                    <TableHead className="w-14">PC</TableHead>
+                    <TableHead className="w-14">AP</TableHead>
+                    <TableHead className="w-14">BP</TableHead>
+                    <TableHead className="w-14">PD</TableHead>
+                    <TableHead className="w-14">PE</TableHead>
+                    <TableHead className="w-14">TD</TableHead>
+                    <TableHead className="w-14">TE</TableHead>
+                    <TableHead className="w-20">CI</TableHead>
+                    <TableHead className="w-20">CVAI</TableHead>
+                    <TableHead className="w-16">TBC</TableHead>
+                    <TableHead className="w-20">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -654,7 +691,7 @@ const PatientEvolution = () => {
         {!isLoading && measurements.length > 0 && (
           <div className="mt-8 flex justify-center gap-4">
             <Button
-              onClick={exportToPdf}
+              onClick={handleExportPdfClick}
               disabled={isExporting || isExportingImages}
               size="lg"
               className="gap-2"
@@ -674,6 +711,16 @@ const PatientEvolution = () => {
           </div>
         )}
       </main>
+
+      {/* Modal de Seleção de Fotos Comparativas */}
+      <PhotoComparisonModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        onExport={handleExportWithPhotos}
+        onExportWithoutPhotos={handleExportWithoutPhotos}
+        pacienteId={patientInfo?.id_paciente || null}
+        isExporting={isExporting}
+      />
 
       <footer className="mt-16 pb-8 text-center text-gray-500">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8"><p className="mt-2 text-xs">&copy; {new Date().getFullYear()} AM BI Análises Inteligentes. Todos os direitos reservados.</p></div>

@@ -182,6 +182,22 @@ export interface PatientPdfData {
 }
 
 /**
+ * Interface para par de fotos comparativas
+ */
+export interface PhotoPairForPdf {
+  before: {
+    url: string;
+    date: string;
+    legenda: string | null;
+  };
+  after: {
+    url: string;
+    date: string;
+    legenda: string | null;
+  };
+}
+
+/**
  * Adiciona cabeçalho ao PDF
  */
 export const addPdfHeader = (
@@ -190,7 +206,8 @@ export const addPdfHeader = (
   leftMargin: number = 10,
   iconDataUrl?: string,
   iconSizeMm: number = 6,
-  iconSpacingMm: number = 5
+  iconSpacingMm: number = 5,
+  profissionalInfo?: { especialidade?: string; crefito?: string }
 ) => {
   const pageWidth = 210;
 
@@ -352,6 +369,220 @@ export const addProfessionalInfoBelowName = (
     pdf.text(crefLine, centerX, y2, { align: 'center' });
   }
 };
+
+/**
+ * Carrega uma imagem de URL e retorna como Data URL
+ */
+export const loadImageAsDataUrl = async (url: string): Promise<string | null> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Erro ao carregar imagem:', error);
+    return null;
+  }
+};
+
+/**
+ * Formata data para exibição no PDF
+ */
+const formatDateForPdf = (dateString: string): string => {
+  return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+/**
+ * Adiciona seção de fotos comparativas ao PDF
+ * Retorna a posição Y final após adicionar as fotos
+ */
+export const addPhotoComparisonSection = async (
+  pdf: jsPDF,
+  pairs: PhotoPairForPdf[],
+  headerHeight: number,
+  patientData: PatientPdfData,
+  iconDataUrl?: string,
+  profissionalInfo?: { especialidade?: string; crefito?: string }
+): Promise<void> => {
+  if (!pairs || pairs.length === 0) return;
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const leftMargin = 10;
+  const rightMargin = 10;
+  const contentWidth = pageWidth - leftMargin - rightMargin;
+  
+  // Dimensões das fotos
+  const photoWidth = 85; // mm
+  const photoHeight = 65; // mm
+  const pairSpacing = 15; // Espaço entre pares
+  const labelHeight = 12; // Espaço para labels (data, legenda)
+  const pairTotalHeight = photoHeight + labelHeight + pairSpacing;
+
+  // Adicionar nova página para as fotos
+  pdf.addPage();
+  
+  // Header da página de fotos
+  const currentHeaderHeight = addPdfHeader(
+    pdf,
+    patientData,
+    leftMargin,
+    iconDataUrl,
+    6,
+    5,
+    profissionalInfo
+  );
+
+  // Título da seção
+  let yPos = currentHeaderHeight + 5;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(12);
+  pdf.text('Registro Fotográfico da Evolução', pageWidth / 2, yPos, { align: 'center' });
+  
+  yPos += 10;
+
+  // Renderizar cada par
+  for (let i = 0; i < pairs.length; i++) {
+    const pair = pairs[i];
+    
+    // Verificar se precisa de nova página
+    if (yPos + pairTotalHeight > pageHeight - 40) {
+      pdf.addPage();
+      const newHeaderHeight = addPdfHeader(
+        pdf,
+        patientData,
+        leftMargin,
+        iconDataUrl,
+        6,
+        5,
+        profissionalInfo
+      );
+      yPos = newHeaderHeight + 10;
+    }
+
+    // Título do par
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10);
+    pdf.setTextColor(80, 80, 80);
+    pdf.text(`Comparativo ${i + 1}`, leftMargin, yPos);
+    pdf.setTextColor(0, 0, 0);
+    yPos += 6;
+
+    // Calcular posições X para as duas fotos lado a lado
+    const gapBetweenPhotos = 10;
+    const totalPhotosWidth = (photoWidth * 2) + gapBetweenPhotos;
+    const startX = (pageWidth - totalPhotosWidth) / 2;
+    const beforeX = startX;
+    const afterX = startX + photoWidth + gapBetweenPhotos;
+
+    // Labels "ANTES" e "DEPOIS"
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text('ANTES', beforeX + photoWidth / 2, yPos, { align: 'center' });
+    pdf.text('DEPOIS', afterX + photoWidth / 2, yPos, { align: 'center' });
+    pdf.setTextColor(0, 0, 0);
+    yPos += 4;
+
+    // Carregar e adicionar imagem "Antes"
+    try {
+      const beforeDataUrl = await loadImageAsDataUrl(pair.before.url);
+      if (beforeDataUrl) {
+        // Desenhar borda/moldura
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.3);
+        pdf.rect(beforeX, yPos, photoWidth, photoHeight);
+        
+        // Adicionar imagem
+        pdf.addImage(beforeDataUrl, 'JPEG', beforeX + 1, yPos + 1, photoWidth - 2, photoHeight - 2);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar imagem ANTES:', error);
+      // Desenhar placeholder
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(beforeX, yPos, photoWidth, photoHeight, 'F');
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.text('Imagem indisponível', beforeX + photoWidth / 2, yPos + photoHeight / 2, { align: 'center' });
+    }
+
+    // Carregar e adicionar imagem "Depois"
+    try {
+      const afterDataUrl = await loadImageAsDataUrl(pair.after.url);
+      if (afterDataUrl) {
+        // Desenhar borda/moldura
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.3);
+        pdf.rect(afterX, yPos, photoWidth, photoHeight);
+        
+        // Adicionar imagem
+        pdf.addImage(afterDataUrl, 'JPEG', afterX + 1, yPos + 1, photoWidth - 2, photoHeight - 2);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar imagem DEPOIS:', error);
+      // Desenhar placeholder
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(afterX, yPos, photoWidth, photoHeight, 'F');
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.text('Imagem indisponível', afterX + photoWidth / 2, yPos + photoHeight / 2, { align: 'center' });
+    }
+
+    // Seta entre as fotos
+    const arrowY = yPos + photoHeight / 2;
+    const arrowX = beforeX + photoWidth + 2;
+    pdf.setDrawColor(100, 100, 100);
+    pdf.setLineWidth(0.5);
+    pdf.line(arrowX, arrowY, arrowX + 6, arrowY);
+    // Ponta da seta
+    pdf.line(arrowX + 4, arrowY - 2, arrowX + 6, arrowY);
+    pdf.line(arrowX + 4, arrowY + 2, arrowX + 6, arrowY);
+
+    yPos += photoHeight + 2;
+
+    // Datas abaixo das fotos
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.text(formatDateForPdf(pair.before.date), beforeX + photoWidth / 2, yPos + 3, { align: 'center' });
+    pdf.text(formatDateForPdf(pair.after.date), afterX + photoWidth / 2, yPos + 3, { align: 'center' });
+
+    // Legendas (se houver)
+    yPos += 5;
+    if (pair.before.legenda || pair.after.legenda) {
+      pdf.setFontSize(7);
+      pdf.setTextColor(100, 100, 100);
+      
+      if (pair.before.legenda) {
+        const beforeLegenda = pair.before.legenda.length > 40 
+          ? pair.before.legenda.substring(0, 37) + '...' 
+          : pair.before.legenda;
+        pdf.text(beforeLegenda, beforeX + photoWidth / 2, yPos + 3, { align: 'center' });
+      }
+      
+      if (pair.after.legenda) {
+        const afterLegenda = pair.after.legenda.length > 40 
+          ? pair.after.legenda.substring(0, 37) + '...' 
+          : pair.after.legenda;
+        pdf.text(afterLegenda, afterX + photoWidth / 2, yPos + 3, { align: 'center' });
+      }
+      
+      pdf.setTextColor(0, 0, 0);
+      yPos += 5;
+    }
+
+    yPos += pairSpacing;
+  }
+};
+
 /**
  * Calcula idade a partir de data de nascimento
  */
