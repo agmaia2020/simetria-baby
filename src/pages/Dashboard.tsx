@@ -35,7 +35,7 @@ const Dashboard = () => {
             {/* ÁREA CLICÁVEL PARA VOLTAR À PÁGINA INICIAL */}
             <div
               className="flex items-center space-x-4 cursor-pointer group"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/home')}
             >
               <img src={novoLogo} alt="Logo Simetrik Baby" className="h-10 w-auto" />
               <span className="text-2xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
