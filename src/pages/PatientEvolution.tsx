@@ -193,16 +193,96 @@ const PatientEvolution = () => {
 
   const calculateIndices = useCallback((data: Partial<Measurement>) => {
     const { ap, bp, pd, pe, td, te } = data;
-    let ci = data.ci, cvai = data.cvai, tbc = data.tbc;
-    if (ci === null && ap && bp && ap > 0) ci = (bp / ap) * 100;
-    if (cvai === null && pd && pe) {
-        const maxVal = Math.max(pd, pe);
-        const minVal = Math.min(pd, pe);
-        if (maxVal > 0) cvai = ((maxVal - minVal) / maxVal) * 100;
+    let ci: number | null = null;
+    let cvai: number | null = null;
+    let tbc: number | null = null;
+    
+    // Sempre recalcular CI se AP e BP existirem
+    if (ap && bp && ap > 0) {
+      ci = (bp / ap) * 100;
     }
-    if (tbc === null && td && te) tbc = Math.abs(td - te);
-    return { ci, cvai, tbc, ciClass: getClassification(ci, 'ci'), cvaiClass: getClassification(cvai, 'cvai'), tbcClass: getClassification(tbc, 'tbc') };
+    
+    // Sempre recalcular CVAI se PD e PE existirem
+    if (pd && pe) {
+      const maxVal = Math.max(pd, pe);
+      const minVal = Math.min(pd, pe);
+      if (maxVal > 0) {
+        cvai = ((maxVal - minVal) / maxVal) * 100;
+      }
+    }
+    
+    // Sempre recalcular TBC se TD e TE existirem
+    if (td && te) {
+      tbc = Math.abs(td - te);
+    }
+    
+    return { 
+      ci, 
+      cvai, 
+      tbc, 
+      ciClass: getClassification(ci, 'ci'), 
+      cvaiClass: getClassification(cvai, 'cvai'), 
+      tbcClass: getClassification(tbc, 'tbc') 
+    };
   }, [getClassification]);
+
+  // Função para aplicar carry forward nos dados do gráfico
+  // Mantém valores nulos na primeira medição, mas usa o último valor válido para medições subsequentes
+  const applyCarryForward = <T extends Record<string, unknown>>(
+    data: T[],
+    valueKey: string
+  ): T[] => {
+    let lastValidValue: number | null = null;
+    
+    return data.map((item, index) => {
+      const currentValue = item[valueKey] as number | null;
+      
+      if (currentValue !== null && currentValue !== undefined && !isNaN(Number(currentValue))) {
+        lastValidValue = currentValue;
+        return item;
+      } else if (index > 0 && lastValidValue !== null) {
+        // Carry forward: usar o último valor válido (apenas após a primeira medição)
+        return { ...item, [valueKey]: lastValidValue };
+      }
+      
+      return item;
+    });
+  };
+
+  // Função para aplicar carry forward nos valores de CI e CVAI das medições
+  // Quando não há parâmetros para calcular, usa o valor da medição anterior
+  const applyMeasurementsCarryForward = (data: MeasurementDisplay[]): MeasurementDisplay[] => {
+    let lastValidCI: number | null = null;
+    let lastValidCVAI: number | null = null;
+    let lastValidCIClass: string = "-";
+    let lastValidCVAIClass: string = "-";
+    
+    return data.map((item, index) => {
+      const newItem = { ...item };
+      
+      // CI: verificar se tem valor válido
+      if (newItem.ci !== null && newItem.ci !== undefined && !isNaN(Number(newItem.ci))) {
+        lastValidCI = newItem.ci;
+        lastValidCIClass = newItem.ciClass;
+      } else if (index > 0 && lastValidCI !== null) {
+        // Carry forward para CI
+        newItem.ci = lastValidCI;
+        newItem.ciClass = lastValidCIClass;
+      }
+      
+      // CVAI: verificar se tem valor válido
+      if (newItem.cvai !== null && newItem.cvai !== undefined && !isNaN(Number(newItem.cvai))) {
+        lastValidCVAI = newItem.cvai;
+        lastValidCVAIClass = newItem.cvaiClass;
+      } else if (index > 0 && lastValidCVAI !== null) {
+        // Carry forward para CVAI
+        newItem.cvai = lastValidCVAI;
+        newItem.cvaiClass = lastValidCVAIClass;
+      }
+      
+      return newItem;
+    });
+  };
 
   // Carregar nome do usuário
   useEffect(() => {
@@ -268,7 +348,10 @@ const PatientEvolution = () => {
         const classifiedData = (measurementData || [])
           .map(m => ({ ...m, ...calculateIndices(m) }))
           .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime());
-        setMeasurements(classifiedData);
+        
+        // Aplicar carry forward nos valores de CI e CVAI
+        const dataWithCarryForward = applyMeasurementsCarryForward(classifiedData);
+        setMeasurements(dataWithCarryForward);
         setDataLoaded(true);
 
       } catch (error) {
@@ -409,9 +492,13 @@ const PatientEvolution = () => {
       handleCancelEdit();
       toast.success("Medida atualizada com sucesso!");
       const updatedList = await getMeasurementsByPatientId(parseInt(pacienteId!), isAdmin, user.id);
-      setMeasurements((updatedList || [])
+      const classifiedList = (updatedList || [])
         .map(m => ({...m, ...calculateIndices(m)}))
-        .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime()));
+        .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime());
+      
+      // Aplicar carry forward nos valores de CI e CVAI
+      const dataWithCarryForward = applyMeasurementsCarryForward(classifiedList);
+      setMeasurements(dataWithCarryForward);
     } else {
       toast.error("Erro ao atualizar medida. Tente novamente.");
     }
@@ -447,12 +534,21 @@ const PatientEvolution = () => {
     exportToPdf();
   };
 
-  const chartData = (measurements || [])
-    .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime())
-    .map(m => ({ data: formatDate(m.data_medicao), CI: m.ci, classification: m.ciClass }));
-  const cvaiChartData = (measurements || [])
-    .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime())
-    .map(m => ({ data: formatDate(m.data_medicao), CVAI: m.cvai, classification: m.cvaiClass }));
+  // Preparar dados do gráfico CI com carry forward
+  const chartData = applyCarryForward(
+    (measurements || [])
+      .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime())
+      .map(m => ({ data: formatDate(m.data_medicao), CI: m.ci, classification: m.ciClass })),
+    'CI'
+  );
+
+  // Preparar dados do gráfico CVAI com carry forward
+  const cvaiChartData = applyCarryForward(
+    (measurements || [])
+      .sort((a, b) => new Date(a.data_medicao).getTime() - new Date(b.data_medicao).getTime())
+      .map(m => ({ data: formatDate(m.data_medicao), CVAI: m.cvai, classification: m.cvaiClass })),
+    'CVAI'
+  );
   
   // Este array continua sendo a fonte para as cores das ReferenceArea
   const ciReferenceData = [
@@ -533,7 +629,7 @@ const PatientEvolution = () => {
                       <ReferenceArea y1={75}  y2={85}  fill={ciReferenceData[2].hex} fillOpacity={0.3} />
                       <ReferenceArea y1={70}  y2={75}  fill={ciReferenceData[1].hex} fillOpacity={0.3} />
                       <ReferenceArea y1={60}  y2={70}  fill={ciReferenceData[0].hex} fillOpacity={0.3} />
-                      <Line type="monotone" dataKey="CI" stroke="#1e3a8a" strokeWidth={2} name="Índice Cefálico" dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="CI" stroke="#1e3a8a" strokeWidth={2} name="Índice Cefálico" dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls={false} />
                     </LineChart>
                   </ResponsiveContainer>
                   {/* Legenda Vertical com CSS */}
@@ -586,7 +682,7 @@ const PatientEvolution = () => {
                     <ReferenceArea y1={6.25} y2={8.75} fill={cvaiLegend[2].hex} fillOpacity={0.3} />
                     <ReferenceArea y1={3.5} y2={6.25} fill={cvaiLegend[1].hex} fillOpacity={0.3} />
                     <ReferenceArea y1={0} y2={3.5} fill={cvaiLegend[0].hex} fillOpacity={0.3} />
-                    <Line type="monotone" dataKey="CVAI" stroke="#1e3a8a" strokeWidth={2} name="CVAI" dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="CVAI" stroke="#1e3a8a" strokeWidth={2} name="CVAI" dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls={false} />
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mt-4 text-xs text-gray-600">
