@@ -402,6 +402,68 @@ const formatDateForPdf = (dateString: string): string => {
 };
 
 /**
+ * Carrega uma imagem e retorna suas dimensões e dataUrl
+ */
+const loadImageWithDimensions = async (url: string): Promise<{ dataUrl: string; width: number; height: number } | null> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+      reader.readAsDataURL(blob);
+    });
+
+    // Carregar imagem para obter dimensões
+    const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => reject(new Error('Erro ao carregar imagem'));
+      img.src = dataUrl;
+    });
+
+    return { dataUrl, ...dimensions };
+  } catch (error) {
+    console.error('Erro ao carregar imagem:', error);
+    return null;
+  }
+};
+
+/**
+ * Calcula dimensões para caber em um container mantendo aspect ratio (object-fit: contain)
+ */
+const calculateFitDimensions = (
+  imgWidth: number,
+  imgHeight: number,
+  containerWidth: number,
+  containerHeight: number
+): { width: number; height: number; offsetX: number; offsetY: number } => {
+  const imgRatio = imgWidth / imgHeight;
+  const containerRatio = containerWidth / containerHeight;
+
+  let width: number;
+  let height: number;
+
+  if (imgRatio > containerRatio) {
+    // Imagem é mais larga que o container - ajustar pela largura
+    width = containerWidth;
+    height = containerWidth / imgRatio;
+  } else {
+    // Imagem é mais alta que o container - ajustar pela altura
+    height = containerHeight;
+    width = containerHeight * imgRatio;
+  }
+
+  // Calcular offset para centralizar
+  const offsetX = (containerWidth - width) / 2;
+  const offsetY = (containerHeight - height) / 2;
+
+  return { width, height, offsetX, offsetY };
+};
+
+/**
  * Adiciona seção de fotos comparativas ao PDF
  * Retorna a posição Y final após adicionar as fotos
  */
@@ -421,12 +483,12 @@ export const addPhotoComparisonSection = async (
   const rightMargin = 10;
   const contentWidth = pageWidth - leftMargin - rightMargin;
   
-  // Dimensões das fotos
-  const photoWidth = 85; // mm
-  const photoHeight = 65; // mm
+  // Dimensões do container das fotos (a foto será ajustada para caber mantendo proporção)
+  const photoContainerWidth = 85; // mm
+  const photoContainerHeight = 65; // mm
   const pairSpacing = 15; // Espaço entre pares
   const labelHeight = 12; // Espaço para labels (data, legenda)
-  const pairTotalHeight = photoHeight + labelHeight + pairSpacing;
+  const pairTotalHeight = photoContainerHeight + labelHeight + pairSpacing;
 
   // Adicionar nova página para as fotos
   pdf.addPage();
@@ -479,67 +541,87 @@ export const addPhotoComparisonSection = async (
 
     // Calcular posições X para as duas fotos lado a lado
     const gapBetweenPhotos = 10;
-    const totalPhotosWidth = (photoWidth * 2) + gapBetweenPhotos;
+    const totalPhotosWidth = (photoContainerWidth * 2) + gapBetweenPhotos;
     const startX = (pageWidth - totalPhotosWidth) / 2;
     const beforeX = startX;
-    const afterX = startX + photoWidth + gapBetweenPhotos;
+    const afterX = startX + photoContainerWidth + gapBetweenPhotos;
 
     // Labels "ANTES" e "DEPOIS"
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(9);
     pdf.setTextColor(100, 100, 100);
-    pdf.text('ANTES', beforeX + photoWidth / 2, yPos, { align: 'center' });
-    pdf.text('DEPOIS', afterX + photoWidth / 2, yPos, { align: 'center' });
+    pdf.text('ANTES', beforeX + photoContainerWidth / 2, yPos, { align: 'center' });
+    pdf.text('DEPOIS', afterX + photoContainerWidth / 2, yPos, { align: 'center' });
     pdf.setTextColor(0, 0, 0);
     yPos += 4;
 
     // Carregar e adicionar imagem "Antes"
     try {
-      const beforeDataUrl = await loadImageAsDataUrl(pair.before.url);
-      if (beforeDataUrl) {
-        // Desenhar borda/moldura
-        pdf.setDrawColor(200, 200, 200);
-        pdf.setLineWidth(0.3);
-        pdf.rect(beforeX, yPos, photoWidth, photoHeight);
+      const beforeImage = await loadImageWithDimensions(pair.before.url);
+      if (beforeImage) {
+        // Calcular dimensões mantendo aspect ratio
+        const beforeFit = calculateFitDimensions(
+          beforeImage.width,
+          beforeImage.height,
+          photoContainerWidth - 2, // margem interna
+          photoContainerHeight - 2
+        );
         
-        // Adicionar imagem
-        pdf.addImage(beforeDataUrl, 'JPEG', beforeX + 1, yPos + 1, photoWidth - 2, photoHeight - 2);
+        // Adicionar imagem centralizada no container
+        pdf.addImage(
+          beforeImage.dataUrl,
+          'JPEG',
+          beforeX + 1 + beforeFit.offsetX,
+          yPos + 1 + beforeFit.offsetY,
+          beforeFit.width,
+          beforeFit.height
+        );
       }
     } catch (error) {
       console.error('Erro ao carregar imagem ANTES:', error);
       // Desenhar placeholder
       pdf.setFillColor(240, 240, 240);
-      pdf.rect(beforeX, yPos, photoWidth, photoHeight, 'F');
+      pdf.rect(beforeX + 1, yPos + 1, photoContainerWidth - 2, photoContainerHeight - 2, 'F');
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
-      pdf.text('Imagem indisponível', beforeX + photoWidth / 2, yPos + photoHeight / 2, { align: 'center' });
+      pdf.text('Imagem indisponível', beforeX + photoContainerWidth / 2, yPos + photoContainerHeight / 2, { align: 'center' });
     }
 
     // Carregar e adicionar imagem "Depois"
     try {
-      const afterDataUrl = await loadImageAsDataUrl(pair.after.url);
-      if (afterDataUrl) {
-        // Desenhar borda/moldura
-        pdf.setDrawColor(200, 200, 200);
-        pdf.setLineWidth(0.3);
-        pdf.rect(afterX, yPos, photoWidth, photoHeight);
+      const afterImage = await loadImageWithDimensions(pair.after.url);
+      if (afterImage) {
+        // Calcular dimensões mantendo aspect ratio
+        const afterFit = calculateFitDimensions(
+          afterImage.width,
+          afterImage.height,
+          photoContainerWidth - 2, // margem interna
+          photoContainerHeight - 2
+        );
         
-        // Adicionar imagem
-        pdf.addImage(afterDataUrl, 'JPEG', afterX + 1, yPos + 1, photoWidth - 2, photoHeight - 2);
+        // Adicionar imagem centralizada no container
+        pdf.addImage(
+          afterImage.dataUrl,
+          'JPEG',
+          afterX + 1 + afterFit.offsetX,
+          yPos + 1 + afterFit.offsetY,
+          afterFit.width,
+          afterFit.height
+        );
       }
     } catch (error) {
       console.error('Erro ao carregar imagem DEPOIS:', error);
       // Desenhar placeholder
       pdf.setFillColor(240, 240, 240);
-      pdf.rect(afterX, yPos, photoWidth, photoHeight, 'F');
+      pdf.rect(afterX + 1, yPos + 1, photoContainerWidth - 2, photoContainerHeight - 2, 'F');
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
-      pdf.text('Imagem indisponível', afterX + photoWidth / 2, yPos + photoHeight / 2, { align: 'center' });
+      pdf.text('Imagem indisponível', afterX + photoContainerWidth / 2, yPos + photoContainerHeight / 2, { align: 'center' });
     }
 
     // Seta entre as fotos
-    const arrowY = yPos + photoHeight / 2;
-    const arrowX = beforeX + photoWidth + 2;
+    const arrowY = yPos + photoContainerHeight / 2;
+    const arrowX = beforeX + photoContainerWidth + 2;
     pdf.setDrawColor(100, 100, 100);
     pdf.setLineWidth(0.5);
     pdf.line(arrowX, arrowY, arrowX + 6, arrowY);
@@ -547,13 +629,13 @@ export const addPhotoComparisonSection = async (
     pdf.line(arrowX + 4, arrowY - 2, arrowX + 6, arrowY);
     pdf.line(arrowX + 4, arrowY + 2, arrowX + 6, arrowY);
 
-    yPos += photoHeight + 2;
+    yPos += photoContainerHeight + 2;
 
     // Datas abaixo das fotos
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
-    pdf.text(formatDateForPdf(pair.before.date), beforeX + photoWidth / 2, yPos + 3, { align: 'center' });
-    pdf.text(formatDateForPdf(pair.after.date), afterX + photoWidth / 2, yPos + 3, { align: 'center' });
+    pdf.text(formatDateForPdf(pair.before.date), beforeX + photoContainerWidth / 2, yPos + 3, { align: 'center' });
+    pdf.text(formatDateForPdf(pair.after.date), afterX + photoContainerWidth / 2, yPos + 3, { align: 'center' });
 
     // Legendas (se houver)
     yPos += 5;
@@ -565,14 +647,14 @@ export const addPhotoComparisonSection = async (
         const beforeLegenda = pair.before.legenda.length > 40 
           ? pair.before.legenda.substring(0, 37) + '...' 
           : pair.before.legenda;
-        pdf.text(beforeLegenda, beforeX + photoWidth / 2, yPos + 3, { align: 'center' });
+        pdf.text(beforeLegenda, beforeX + photoContainerWidth / 2, yPos + 3, { align: 'center' });
       }
       
       if (pair.after.legenda) {
         const afterLegenda = pair.after.legenda.length > 40 
           ? pair.after.legenda.substring(0, 37) + '...' 
           : pair.after.legenda;
-        pdf.text(afterLegenda, afterX + photoWidth / 2, yPos + 3, { align: 'center' });
+        pdf.text(afterLegenda, afterX + photoContainerWidth / 2, yPos + 3, { align: 'center' });
       }
       
       pdf.setTextColor(0, 0, 0);
