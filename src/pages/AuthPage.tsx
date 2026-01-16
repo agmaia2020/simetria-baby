@@ -1,22 +1,45 @@
 import { useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
+import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm';
 import novoLogo from '@/assets/Logo Modificado.png';
 
 const AuthPage = () => {
   const { type } = useParams<{ type: string }>();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Verificar se está na página de reset-password (via URL ou parâmetro)
+  const isResetPasswordPage = type === 'reset-password' || location.pathname.includes('reset-password');
+
+  // DEBUG LOG - remover depois de resolver
+  console.log('🔍 AuthPage Debug:', { 
+    type, 
+    pathname: location.pathname,
+    hash: location.hash,
+    isResetPasswordPage, 
+    user: !!user, 
+    loading 
+  });
 
   useEffect(() => {
-    if (!loading && user) {
-      navigate('/home');  // ← CORRIGIDO: era '/Index'
+    // NUNCA redirecionar se estiver na página de reset-password
+    if (isResetPasswordPage) {
+      console.log('🔍 Reset password page detectada - NÃO redirecionando');
+      return;
     }
-  }, [user, loading, navigate]);
+    
+    // Redirecionar para home apenas se não for página de reset
+    if (!loading && user) {
+      console.log('🔍 Usuário logado, redirecionando para /home');
+      navigate('/home');
+    }
+  }, [user, loading, navigate, isResetPasswordPage]);
 
-  if (loading) {
+  if (loading && !isResetPasswordPage) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Carregando...</div>
@@ -24,14 +47,18 @@ const AuthPage = () => {
     );
   }
 
-  if (user) {
+  // Não bloquear a renderização se for página de reset-password
+  if (user && !isResetPasswordPage) {
     return null;
   }
 
   const renderForm = () => {
+    console.log('🔍 renderForm chamado com type:', type);
     switch (type) {
       case 'forgot-password':
         return <ForgotPasswordForm />;
+      case 'reset-password':
+        return <ResetPasswordForm />;
       default:
         return <LoginForm />;
     }

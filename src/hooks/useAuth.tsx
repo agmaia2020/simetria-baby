@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -161,19 +160,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = async (email: string) => {
     try {
+      // IMPORTANTE: URL completa com /auth/reset-password
       const redirectUrl = `${window.location.origin}/auth/reset-password`;
+      
+      console.log('🔐 [resetPassword] Enviando reset para:', email);
+      console.log('🔐 [resetPassword] Redirect URL:', redirectUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
       });
       
       if (error) {
+        console.error('🔐 [resetPassword] Erro:', error);
         toast({
           title: "Erro ao enviar e-mail",
           description: error.message,
           variant: "destructive",
         });
       } else {
+        console.log('🔐 [resetPassword] E-mail enviado com sucesso!');
         toast({
           title: "E-mail enviado!",
           description: "Verifique sua caixa de entrada para redefinir a senha.",
@@ -182,6 +187,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       return { error };
     } catch (error: any) {
+      console.error('🔐 [resetPassword] Erro inesperado:', error);
       toast({
         title: "Erro ao enviar e-mail",
         description: "Ocorreu um erro inesperado.",
